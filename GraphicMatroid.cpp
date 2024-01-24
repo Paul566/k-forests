@@ -71,10 +71,7 @@ void GraphicMatroid::GenerateKForests(int k) {
         DrawNextForestBFS();
     }
 
-    std::unordered_set<std::shared_ptr<Edge>> visited_edges;
-    FindPathAndAugment(adj_list_[5][2], visited_edges);
-
-    // while (TryToAugment()) {};
+    while (TryToAugment()) {};
 }
 
 void GraphicMatroid::PrintGraph() {
