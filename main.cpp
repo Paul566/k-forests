@@ -47,8 +47,9 @@ int main() {
 
     graph.PrintGraph();
 
-    for (const auto& forest : forests) {
-        for (auto edge : forest) {
+    std::cout << "Forests:\n";
+    for (const auto &forest: forests) {
+        for (auto edge: forest) {
             std::cout << edge.first << " " << edge.second << "\n";
         }
         std::cout << "\n";

@@ -4,17 +4,18 @@
 
 #include <vector>
 #include <memory>
+#include <unordered_set>
 
 
 struct Edge {
 public:
-    int tree;
-    // the index of a tree this edge is in, -1 if not covered
-    // trees are enumerated from 0
+    int forest;
+    // the index of a forest this edge is in, -1 if not covered
+    // forest are enumerated from 0
     // TODO maybe use std::optional<int> instead of the magical constant "-1"
 
     Edge(int from, int to) : from_(from), to_(to) {
-        tree = -1;
+        forest = -1;
     }
 
     int AnotherVertex(int vertex) const {
@@ -36,7 +37,7 @@ class GraphicMatroid {
 public:
     GraphicMatroid(const std::vector<std::vector<int>> &adj_list);
 
-    std::vector<std::vector<std::pair<int, int>>> GetForests ();
+    std::vector<std::vector<std::pair<int, int>>> GetForests();
 
     void GenerateKForests(int k);
 
@@ -48,7 +49,20 @@ private:
 
     void DrawNextForestDFS();
 
-    void DFSNextForest(int vertex, std::vector<bool>& visited_vertices);
+    void DFSNextForest(int vertex, std::vector<bool> &visited_vertices);
+
+    void DrawNextForestBFS();
+
+    void BFSNextForest(int vertex, std::vector<bool> &visited_vertices);
+
+    std::vector<std::shared_ptr<Edge>> ExchangeGraphNeighbors(const std::shared_ptr<Edge> &edge, int forest_index);
+
+    bool FindPathAndAugment(const std::shared_ptr<Edge> &initial_edge,
+                            std::unordered_set<std::shared_ptr<Edge>> &visited_edges);
+
+    int EdgeIsJoining(const std::shared_ptr<Edge> &edge);
+
+    bool TryToAugment();
 };
 
 
