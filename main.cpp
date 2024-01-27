@@ -1,59 +1,54 @@
 #include <iostream>
 #include <vector>
+#include <fstream>
+#include <sstream>
+#include <filesystem>
 #include "GraphicMatroid.h"
 
+std::vector<std::vector<int>> ReadAdjList(const std::string &path) {
+    std::vector<std::vector<int>> adj_list;
+    std::fstream input_file(path);
+
+    if (input_file.is_open()) {
+        std::string line;
+        std::getline(input_file, line);
+
+        int num_vertices, num_edges;
+        std::istringstream stream(line);
+        stream >> num_vertices >> num_edges;
+
+        for (int i = 0; i < num_vertices; ++i) {
+            std::getline(input_file, line);
+            std::vector<int> neighbors;
+
+            stream = std::istringstream(line);
+            int next_vertex;
+            while (stream >> next_vertex) {
+                neighbors.push_back(next_vertex - 1);
+            }
+
+            adj_list.push_back(neighbors);
+        }
+    } else {
+        throw std::runtime_error("input file not found");
+    }
+    input_file.close();
+
+    return adj_list;
+}
+
 int main() {
-    std::vector<std::vector<int>> adj_list(8);
+    std::string prefix = std::filesystem::current_path().string() + "/../tests/random-graphs/";
 
-    adj_list[0].push_back(1);
-    adj_list[0].push_back(2);
-    adj_list[0].push_back(3);
-
-    adj_list[1].push_back(0);
-    adj_list[1].push_back(3);
-    adj_list[1].push_back(6);
-
-    adj_list[2].push_back(0);
-    adj_list[2].push_back(3);
-    adj_list[2].push_back(5);
-
-    adj_list[3].push_back(0);
-    adj_list[3].push_back(1);
-    adj_list[3].push_back(2);
-    adj_list[3].push_back(4);
-    adj_list[3].push_back(5);
-    adj_list[3].push_back(6);
-    adj_list[3].push_back(7);
-
-    adj_list[4].push_back(3);
-    adj_list[4].push_back(6);
-
-    adj_list[5].push_back(2);
-    adj_list[5].push_back(3);
-    adj_list[5].push_back(6);
-    adj_list[5].push_back(7);
-
-    adj_list[6].push_back(1);
-    adj_list[6].push_back(3);
-    adj_list[6].push_back(4);
-    adj_list[6].push_back(5);
-
-    adj_list[7].push_back(3);
-    adj_list[7].push_back(5);
+    auto adj_list = ReadAdjList(prefix + "3-3.txt");
 
     GraphicMatroid graph(adj_list);
-    graph.GenerateKForests(2);
-    auto forests = graph.GetForests();
-
     graph.PrintGraph();
 
-    std::cout << "Forests:\n";
-    for (const auto &forest: forests) {
-        for (auto edge: forest) {
-            std::cout << edge.first << " " << edge.second << "\n";
-        }
-        std::cout << "\n";
-    }
+    graph.GenerateKForests(2);
+    auto forests = graph.GetForests();
+    graph.PrintGraph();
+
 
     return 0;
 }
