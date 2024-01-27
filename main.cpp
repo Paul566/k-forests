@@ -37,18 +37,49 @@ std::vector<std::vector<int>> ReadAdjList(const std::string &path) {
     return adj_list;
 }
 
+std::vector<int> SolveForAllK(const std::vector<std::vector<int>>& adj_list) {
+    // returns (a_0, a_1, ..., a_n), where a_k is the size of the optimal solution for k = k
+    std::vector<int> answers;
+
+    for (int k = 0; k <= static_cast<int>(adj_list.size()); ++k) {
+        GraphicMatroid graph(adj_list);
+        graph.GenerateKForests(k);
+        auto forests = graph.GetForests();
+        int optimal_size = 0;
+        for (const auto& forest : forests) {
+            optimal_size += static_cast<int>(forest.size());
+        }
+        answers.push_back(optimal_size);
+    }
+
+    return answers;
+}
+
+void ExportAnswers(const std::string& path, const std::vector<int>& answers) {
+    std::ofstream output(path);
+
+    for (int answer : answers) {
+        output << answer << "\n";
+    }
+
+    output.close();
+}
+
 int main() {
     std::string prefix = std::filesystem::current_path().string() + "/../tests/random-graphs/";
 
-    auto adj_list = ReadAdjList(prefix + "3-3.txt");
+    for (int n = 3; n <= 15; ++n) {
+        for (int m = n; m <= n * (n - 1) / 2; ++m) {
+            auto adj_list = ReadAdjList(prefix + std::to_string(n) + "-" + std::to_string(m) + ".txt");
+            auto answers = SolveForAllK(adj_list);
+            ExportAnswers(prefix + std::to_string(n) + "-" + std::to_string(m) + "-answers.txt", answers);
 
-    GraphicMatroid graph(adj_list);
-    graph.PrintGraph();
-
-    graph.GenerateKForests(2);
-    auto forests = graph.GetForests();
-    graph.PrintGraph();
-
+            std::cout << "\n\n" << std::to_string(n) + "-" + std::to_string(m) + ".txt\n";
+            for (int answer : answers) {
+                std::cout << answer << " ";
+            }
+        }
+    }
 
     return 0;
 }
