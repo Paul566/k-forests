@@ -39,13 +39,34 @@ double Tester::RunTest(int k) {
 }
 
 bool Tester::ForestsAreDisjoint(const std::vector<std::vector<std::pair<int, int>>> &forests) {
-    // TODO
+    std::vector<int64_t> edge_hashes;
+    for (const auto& forest : forests) {
+        for (auto edge : forest) {
+            int from = edge.first;
+            int to = edge.second;
+            if (from > to) {
+                to = edge.first;
+                from = edge.second;
+            }
+            edge_hashes.push_back(from * static_cast<int64_t>(adj_list_.size()) + to);
+        }
+    }
+
+    std::unordered_set<int64_t> edge_set;
+    for (int64_t hash : edge_hashes) {
+        if (edge_set.find(hash) == edge_set.end()) {
+            edge_set.insert(hash);
+        } else {
+            return false;
+        }
+    }
+
     return true;
 }
 
 int Tester::SumOfSizes(const std::vector<std::vector<std::pair<int, int>>> &forests) {
     int size = 0;
-    for (auto forest: forests) {
+    for (const auto& forest: forests) {
         size += static_cast<int>(forest.size());
     }
     return size;
