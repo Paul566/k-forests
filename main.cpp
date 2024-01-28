@@ -31,7 +31,7 @@ std::vector<std::vector<int>> ReadAdjList(const std::string &path) {
             adj_list.push_back(neighbors);
         }
     } else {
-        throw std::runtime_error("input file not found");
+        throw std::runtime_error("input file " + path + " not found");
     }
     input_file.close();
 
@@ -41,10 +41,18 @@ std::vector<std::vector<int>> ReadAdjList(const std::string &path) {
 std::vector<int> ReadAnswers(const std::string& path) {
     std::vector<int> answers;
     std::fstream input_file(path);
-    int next_answer;
-    while (input_file >> next_answer) {
-        answers.push_back(next_answer);
+
+    if (input_file.is_open()) {
+        int next_answer;
+        while (input_file >> next_answer) {
+            answers.push_back(next_answer);
+        }
+    } else {
+        throw std::runtime_error("input file " + path + " not found");
     }
+
+    input_file.close();
+
     return answers;
 }
 
@@ -66,45 +74,47 @@ std::vector<int> SolveForAllK(const std::vector<std::vector<int>> &adj_list) {
     return answers;
 }
 
-void ExportAnswers(const std::string &path, const std::vector<int> &answers) {
+void ExportVector(const std::string &path, const std::vector<int> &vector) {
     std::ofstream output(path);
 
-    for (int answer: answers) {
-        output << answer << "\n";
+    for (int element: vector) {
+        output << element << "\n";
     }
 
     output.close();
 }
 
-void TestAllK(const std::vector<std::vector<int>> &adj_list, const std::vector<int> &ground_truth_answers) {
+void RunRandomTests() {
+    std::string prefix = std::filesystem::current_path().string() + "/../tests/random-graphs/";
 
+    std::cout << std::fixed;
+    std::cout << std::setprecision(4);
+
+    for (int n = 3; n <= 15; ++n) {
+        for (int m = n; m <= n * (n - 1) / 2; ++m) {
+            std::string filename_graph = std::to_string(n) + "-" + std::to_string(m) + ".txt";
+            std::string filename_answers = std::to_string(n) + "-" + std::to_string(m) + "-answers.txt";
+
+            std::cout << filename_graph << ":" << std::endl;
+
+            auto adj_list = ReadAdjList(prefix + filename_graph);
+            auto answers = ReadAnswers(prefix + filename_answers);
+
+            Tester tester(adj_list, answers);
+            auto times = tester.RunForAllK();
+
+            for (double time : times) {
+                std::cout << time << " ";
+            }
+            std::cout << "\n";
+        }
+    }
+
+    std::cout << "\nAll tests passed!\n";
 }
 
 int main() {
-    std::string prefix = std::filesystem::current_path().string() + "/../tests/random-graphs/";
-
-    auto adj_list = ReadAdjList(prefix + "12-37.txt");
-    auto answers = ReadAnswers(prefix + "12-37-answers.txt");
-
-    Tester tester(adj_list, answers);
-    auto times = tester.RunForAllK();
-
-    for (double time : times) {
-        std::cout << time << "\n";
-    }
-
-    /*for (int n = 3; n <= 15; ++n) {
-        for (int m = n; m <= n * (n - 1) / 2; ++m) {
-            auto adj_list = ReadAdjList(prefix + std::to_string(n) + "-" + std::to_string(m) + ".txt");
-            auto answers = SolveForAllK(adj_list);
-            ExportAnswers(prefix + std::to_string(n) + "-" + std::to_string(m) + "-answers.txt", answers);
-
-            std::cout << "\n\n" << std::to_string(n) + "-" + std::to_string(m) + ".txt\n";
-            for (int answer: answers) {
-                std::cout << answer << " ";
-            }
-        }
-    }*/
+    RunRandomTests();
 
     return 0;
 }
