@@ -53,8 +53,6 @@ private:
 
     void DrawNextForestBFS();
 
-    void BFSNextForest(int vertex, std::vector<bool> &visited_vertices);
-
     std::vector<std::shared_ptr<Edge>> ExchangeGraphNeighbors(const std::shared_ptr<Edge> &edge, int forest_index);
 
     bool FindPathAndAugment(const std::shared_ptr<Edge> &initial_edge,

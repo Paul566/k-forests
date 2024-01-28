@@ -5,4 +5,6 @@ set(CMAKE_CXX_STANDARD 17)
 
 add_executable(k_forests main.cpp
         GraphicMatroid.h
-        GraphicMatroid.cpp)
+        GraphicMatroid.cpp
+        Tester.h
+        Tester.cpp)

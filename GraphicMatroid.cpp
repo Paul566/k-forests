@@ -68,7 +68,7 @@ void GraphicMatroid::DFSNextForest(int vertex, std::vector<bool> &visited_vertic
 
 void GraphicMatroid::GenerateKForests(int k) {
     for (int i = 0; i < k; ++i) {
-        DrawNextForestBFS();
+        DrawNextForestDFS();
     }
 
     while (TryToAugment()) {};
