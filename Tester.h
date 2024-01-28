@@ -18,7 +18,7 @@ private:
 
     bool ForestsAreDisjoint(const std::vector<std::vector<std::pair<int, int>>>& forests);
 
-    int SumOfSizes(const std::vector<std::vector<std::pair<int, int>>>& forests);
+    static int SumOfSizes(const std::vector<std::vector<std::pair<int, int>>>& forests);
 
     bool IsAcyclic(const std::vector<std::pair<int, int>>& forest);
 };

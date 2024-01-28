@@ -1,5 +1,6 @@
 #include <stdexcept>
 #include <chrono>
+#include <queue>
 #include "Tester.h"
 #include "GraphicMatroid.h"
 
@@ -73,7 +74,41 @@ int Tester::SumOfSizes(const std::vector<std::vector<std::pair<int, int>>> &fore
 }
 
 bool Tester::IsAcyclic(const std::vector<std::pair<int, int>> &forest) {
-    // TODO
+    std::vector<std::vector<int>> forest_adj_list(adj_list_.size(), std::vector<int>());
+    for (auto edge : forest) {
+        forest_adj_list[edge.first].push_back(edge.second);
+        forest_adj_list[edge.second].push_back(edge.first);
+    }
+
+    std::vector<bool> visited_vertices(forest_adj_list.size(), false);
+    std::vector<int> parents(forest_adj_list.size(), -1);
+
+    for (int rooting_vertex = 0; rooting_vertex < static_cast<int>(forest_adj_list.size()); ++rooting_vertex) {
+        if (!visited_vertices[rooting_vertex]) {
+            std::queue<int> queue;
+            queue.push(rooting_vertex);
+
+            visited_vertices[rooting_vertex] = true;
+
+            while (!queue.empty()) {
+                int current_vertex = queue.front();
+                queue.pop();
+
+                for (int next_vertex: forest_adj_list[current_vertex]) {
+                    if (visited_vertices[next_vertex]) {
+                        if (next_vertex != parents[current_vertex]) {
+                            return false;
+                        }
+                        continue;
+                    }
+                    queue.push(next_vertex);
+                    visited_vertices[next_vertex] = true;
+                    parents[next_vertex] = current_vertex;
+                }
+            }
+        }
+    }
+
     return true;
 }
 
