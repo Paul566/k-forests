@@ -35,7 +35,7 @@ private:
 
 class GraphicMatroid {
 public:
-    GraphicMatroid(const std::vector<std::vector<int>> &adj_list);
+    explicit GraphicMatroid(const std::vector<std::vector<int>> &adj_list);
 
     std::vector<std::vector<std::pair<int, int>>> GetForests();
 
@@ -53,14 +53,17 @@ private:
 
     void DrawNextForestBFS();
 
-    std::vector<std::shared_ptr<Edge>> ExchangeGraphNeighbors(const std::shared_ptr<Edge> &edge, int forest_index);
+    std::shared_ptr<Edge> FindOutEdge(const std::shared_ptr<Edge> &edge, int forest_index,
+                                      const std::unordered_set<std::shared_ptr<Edge>>& allowed_edges);
 
     bool FindPathAndAugment(const std::shared_ptr<Edge> &initial_edge,
-                            std::unordered_set<std::shared_ptr<Edge>> &visited_edges);
+                            std::unordered_set<std::shared_ptr<Edge>> &unvisited_edges);
 
     int EdgeIsJoining(const std::shared_ptr<Edge> &edge);
 
     bool TryToAugment();
+
+    std::unordered_set<std::shared_ptr<Edge>> EdgeSet();
 };
 
 

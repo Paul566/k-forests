@@ -85,63 +85,8 @@ void GraphicMatroid::PrintGraph() {
     }
 }
 
-std::vector<std::shared_ptr<Edge>> GraphicMatroid::ExchangeGraphNeighbors(
-        const std::shared_ptr<Edge> &edge, int forest_index) {
-    // returns the fundamental cycle of edge in the tree_index'th forest
-    // TODO this is O(m), rewrite
-
-    std::vector<std::shared_ptr<Edge>> ans;
-
-    if (edge->forest == forest_index) {
-        return ans;
-    }
-
-    int initial_vertex = edge->Vertices().first;
-    int final_vertex = edge->Vertices().second;
-
-    std::queue<int> queue;
-    queue.push(initial_vertex);
-
-    std::vector<bool> visited_vertices(adj_list_.size(), false);
-    std::vector<std::shared_ptr<Edge>> edge_to_parent(adj_list_.size(), edge);
-    visited_vertices[initial_vertex] = true;
-
-    bool path_exists = false;
-    while ((!queue.empty()) && (!path_exists)) {
-        int current_vertex = queue.front();
-        queue.pop();
-
-        for (const auto &next_edge: adj_list_[current_vertex]) {
-            int next_vertex = next_edge->AnotherVertex(current_vertex);
-
-            if ((next_edge->forest != forest_index) || (visited_vertices[next_vertex])) {
-                continue;
-            }
-
-            queue.push(next_vertex);
-            edge_to_parent[next_vertex] = next_edge;
-            visited_vertices[next_vertex] = true;
-            if (next_vertex == final_vertex) {
-                path_exists = true;
-                break;
-            }
-        }
-    }
-
-    if (!path_exists) {
-        return ans;
-    }
-
-    int path_vertex = final_vertex;
-    while (path_vertex != initial_vertex) {
-        ans.push_back(edge_to_parent[path_vertex]);
-        path_vertex = edge_to_parent[path_vertex]->AnotherVertex(path_vertex);
-    }
-    return ans;
-}
-
 bool GraphicMatroid::FindPathAndAugment(const std::shared_ptr<Edge> &initial_edge,
-                                        std::unordered_set<std::shared_ptr<Edge>> &visited_edges) {
+                                        std::unordered_set<std::shared_ptr<Edge>> &unvisited_edges) {
     // finds an augmenting path and augments, if the path exists
     // returns true if successful, false otherwise
 
@@ -151,9 +96,9 @@ bool GraphicMatroid::FindPathAndAugment(const std::shared_ptr<Edge> &initial_edg
 
     std::queue<std::shared_ptr<Edge>> queue;
     queue.push(initial_edge);
+    unvisited_edges.erase(initial_edge);
 
     std::unordered_map<std::shared_ptr<Edge>, std::shared_ptr<Edge>> parents;
-    visited_edges.insert(initial_edge);
 
     int final_forest_index = -1;
     std::shared_ptr<Edge> final_edge;
@@ -162,21 +107,20 @@ bool GraphicMatroid::FindPathAndAugment(const std::shared_ptr<Edge> &initial_edg
         queue.pop();
 
         for (int forest_index = 0; forest_index < num_forests; ++forest_index) {
-            for (const auto &next_edge: ExchangeGraphNeighbors(current_edge, forest_index)) {
-
-                if (visited_edges.find(next_edge) != visited_edges.end()) {
-                    continue;
-                }
-
+            std::shared_ptr<Edge> next_edge = FindOutEdge(current_edge, forest_index, unvisited_edges);
+            unvisited_edges.erase(next_edge);
+            while (next_edge != nullptr) {
                 queue.push(next_edge);
                 parents[next_edge] = current_edge;
-                visited_edges.insert(next_edge);
 
                 final_forest_index = EdgeIsJoining(next_edge);
                 if (final_forest_index != -1) {
                     final_edge = next_edge;
                     break;
                 }
+
+                next_edge = FindOutEdge(current_edge, forest_index, unvisited_edges);
+                unvisited_edges.erase(next_edge);
             }
         }
     }
@@ -200,12 +144,14 @@ bool GraphicMatroid::FindPathAndAugment(const std::shared_ptr<Edge> &initial_edg
 int GraphicMatroid::EdgeIsJoining(const std::shared_ptr<Edge> &edge) {
     // if the edge is joining, returns the index of the corresponding forest
     // else returns -1
+    // TODO this is slow, rewrite using disjoint sets
 
+    auto all_edges = EdgeSet();
     for (int forest_index = 0; forest_index < num_forests; ++forest_index) {
         if (edge->forest == forest_index) {
             continue;
         }
-        if (ExchangeGraphNeighbors(edge, forest_index).empty()) {
+        if (FindOutEdge(edge, forest_index, all_edges) == nullptr) {
             return forest_index;
         }
     }
@@ -214,12 +160,12 @@ int GraphicMatroid::EdgeIsJoining(const std::shared_ptr<Edge> &edge) {
 }
 
 bool GraphicMatroid::TryToAugment() {
-    std::unordered_set<std::shared_ptr<Edge>> visited_edges;
+    auto unvisited_edges = EdgeSet();
 
     for (int vertex = 0; vertex < static_cast<int>(adj_list_.size()); ++vertex) {
         for (const auto &edge: adj_list_[vertex]) {
             if (vertex < edge->AnotherVertex(vertex)) {
-                if (FindPathAndAugment(edge, visited_edges)) {
+                if (FindPathAndAugment(edge, unvisited_edges)) {
                     return true;
                 }
             }
@@ -260,4 +206,74 @@ void GraphicMatroid::DrawNextForestBFS() {
     }
 
     ++num_forests;
+}
+
+std::shared_ptr<Edge> GraphicMatroid::FindOutEdge(const std::shared_ptr<Edge> &edge, int forest_index,
+                                                  const std::unordered_set<std::shared_ptr<Edge>> &allowed_edges) {
+    // returns an edge in a fundamental cycle of the given edge
+    // that is in allowed_edges and in the tree_index'th forest,
+    // if no such edge exists, returns nullptr
+    // TODO this is O(m), rewrite
+
+    if (edge->forest == forest_index) {
+        return nullptr;
+    }
+
+    int initial_vertex = edge->Vertices().first;
+    int final_vertex = edge->Vertices().second;
+
+    std::queue<int> queue;
+    queue.push(initial_vertex);
+
+    std::vector<bool> visited_vertices(adj_list_.size(), false);
+    std::vector<std::shared_ptr<Edge>> edge_to_parent(adj_list_.size(), edge);
+    visited_vertices[initial_vertex] = true;
+
+    bool path_exists = false;
+    while ((!queue.empty()) && (!path_exists)) {
+        int current_vertex = queue.front();
+        queue.pop();
+
+        for (const auto &next_edge: adj_list_[current_vertex]) {
+            int next_vertex = next_edge->AnotherVertex(current_vertex);
+
+            if ((next_edge->forest != forest_index) || (visited_vertices[next_vertex])) {
+                continue;
+            }
+
+            queue.push(next_vertex);
+            edge_to_parent[next_vertex] = next_edge;
+            visited_vertices[next_vertex] = true;
+            if (next_vertex == final_vertex) {
+                path_exists = true;
+                break;
+            }
+        }
+    }
+
+    if (!path_exists) {
+        return nullptr;
+    }
+
+    int path_vertex = final_vertex;
+    while (path_vertex != initial_vertex) {
+        if (allowed_edges.find(edge_to_parent[path_vertex]) != allowed_edges.end()) {
+            return edge_to_parent[path_vertex];
+        }
+        path_vertex = edge_to_parent[path_vertex]->AnotherVertex(path_vertex);
+    }
+    return nullptr;
+}
+
+std::unordered_set<std::shared_ptr<Edge>> GraphicMatroid::EdgeSet() {
+    // returns unordered_set of pointers for all edges
+    std::unordered_set<std::shared_ptr<Edge>> edge_set;
+
+    for (const auto& list : adj_list_) {
+        for (const auto& edge : list) {
+            edge_set.insert(edge);
+        }
+    }
+
+    return edge_set;
 }
