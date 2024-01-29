@@ -64,6 +64,14 @@ private:
     bool TryToAugment();
 
     std::unordered_set<std::shared_ptr<Edge>> EdgeSet();
+
+    std::vector<std::shared_ptr<Edge>> EdgeVector();
+
+    std::tuple<bool, std::vector<std::unordered_set<std::shared_ptr<Edge>>>> Layers();
+
+    bool BlockFlowIndependence();
+
+    static void AugmentPath(const std::vector<std::shared_ptr<Edge>>& path, int final_color);
 };
 
 

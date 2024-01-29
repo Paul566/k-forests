@@ -67,11 +67,15 @@ void GraphicMatroid::DFSNextForest(int vertex, std::vector<bool> &visited_vertic
 }
 
 void GraphicMatroid::GenerateKForests(int k) {
+    if (k <= 0) {
+        return;
+    }
+
     for (int i = 0; i < k; ++i) {
         DrawNextForestDFS();
     }
 
-    while (TryToAugment()) {};
+    while (BlockFlowIndependence()) {};
 }
 
 void GraphicMatroid::PrintGraph() {
@@ -162,13 +166,10 @@ int GraphicMatroid::EdgeIsJoining(const std::shared_ptr<Edge> &edge) {
 bool GraphicMatroid::TryToAugment() {
     auto unvisited_edges = EdgeSet();
 
-    for (int vertex = 0; vertex < static_cast<int>(adj_list_.size()); ++vertex) {
-        for (const auto &edge: adj_list_[vertex]) {
-            if (vertex < edge->AnotherVertex(vertex)) {
-                if (FindPathAndAugment(edge, unvisited_edges)) {
-                    return true;
-                }
-            }
+    auto edge_vector = EdgeVector();
+    for (const auto& edge : edge_vector) {
+        if (FindPathAndAugment(edge, unvisited_edges)) {
+            return true;
         }
     }
 
@@ -276,4 +277,134 @@ std::unordered_set<std::shared_ptr<Edge>> GraphicMatroid::EdgeSet() {
     }
 
     return edge_set;
+}
+
+std::tuple<bool, std::vector<std::unordered_set<std::shared_ptr<Edge>>>> GraphicMatroid::Layers() {
+    // returns ((T is reachable from s), (l_0, ..., l_d)),
+    // where l_i is at distance i + 1 from s (see the compressed exchange graph)
+
+    std::vector<std::unordered_set<std::shared_ptr<Edge>>> layers;
+
+    std::unordered_set<std::shared_ptr<Edge>> unvisited_edges = EdgeSet();
+    int edges_limit = static_cast<int>(unvisited_edges.size());
+
+    std::unordered_set<std::shared_ptr<Edge>> free_edges;
+    auto edge_vector = EdgeVector();
+    for (const auto& edge : edge_vector) {
+        if (edge->forest == -1) {
+            free_edges.insert(edge);
+            unvisited_edges.erase(edge);
+        }
+    }
+    layers.push_back(free_edges);
+
+    for (int counter = 0; counter < edges_limit; ++counter) {
+        std::unordered_set<std::shared_ptr<Edge>> next_layer;
+        for (const auto& edge : layers.back()) {
+            if (EdgeIsJoining(edge) != -1) {
+                return std::forward_as_tuple(true, layers);
+            }
+
+            for (int forest_index = 0; forest_index < num_forests; ++forest_index) {
+                auto next_level_edge = FindOutEdge(edge, forest_index, unvisited_edges);
+                while(next_level_edge != nullptr) {
+                    unvisited_edges.erase(next_level_edge);
+                    next_layer.insert(next_level_edge);
+                    next_level_edge = FindOutEdge(edge, forest_index, unvisited_edges);
+                }
+            }
+        }
+
+        if (next_layer.empty()) {
+            return std::forward_as_tuple(false, layers);
+        }
+
+        layers.push_back(next_layer);
+    }
+
+    return std::forward_as_tuple(false, layers);
+}
+
+std::vector<std::shared_ptr<Edge>> GraphicMatroid::EdgeVector() {
+    // returns vector of all edges
+
+    std::vector<std::shared_ptr<Edge>> edge_vector;
+
+    for (int vertex = 0; vertex < static_cast<int>(adj_list_.size()); ++vertex) {
+        for (const auto &edge: adj_list_[vertex]) {
+            if (vertex < edge->AnotherVertex(vertex)) {
+                edge_vector.push_back(edge);
+            }
+        }
+    }
+
+    return edge_vector;
+}
+
+bool GraphicMatroid::BlockFlowIndependence() {
+    // BlockFlowIndependence procedure from Terao, "Faster Matroid Partition Algorithms"
+    // returns true if success
+
+    // std::cout << "bfi" << std::endl;
+
+    auto layers_output = Layers();
+    if (!std::get<0>(layers_output)) {
+        return false;
+    }
+
+    auto layers = std::get<1>(layers_output);
+    std::vector<std::shared_ptr<Edge>> current_path;
+    int next_layer_index = 0;  // next vertex should be in that level
+    while (!((layers[0].empty()) && (current_path.empty()))) {
+
+        if (next_layer_index == 0) {
+            std::shared_ptr<Edge> next_edge = *layers[0].begin();
+            layers[0].erase(next_edge);
+            ++next_layer_index;
+            current_path.push_back(next_edge);
+        } else {
+            std::shared_ptr<Edge> current_edge = current_path.back();
+            if (next_layer_index == static_cast<int>(layers.size())) {
+                // we are at a final level
+
+                int edge_is_joining = EdgeIsJoining(current_edge);
+                if (edge_is_joining != -1) {
+                    // std::cout << "augmenting" << std::endl;
+                    AugmentPath(current_path, edge_is_joining);
+                    current_path.clear();
+                    next_layer_index = 0;
+                } else {
+                    --next_layer_index;
+                    current_path.pop_back();
+                }
+            } else {
+                std::shared_ptr<Edge> next_edge = FindOutEdge(current_edge, 0, layers[next_layer_index]);
+                for (int k = 1; k < num_forests; ++k) {
+                    if (next_edge == nullptr) {
+                        next_edge = FindOutEdge(current_edge, k, layers[next_layer_index]);
+                    } else {
+                        break;
+                    }
+                }
+
+                if (next_edge == nullptr) {
+                    --next_layer_index;
+                    current_path.pop_back();
+                } else {
+                    layers[next_layer_index].erase(next_edge);
+                    ++next_layer_index;
+                    current_path.push_back(next_edge);
+                }
+            }
+        }
+    }
+
+    return true;
+}
+
+void GraphicMatroid::AugmentPath(const std::vector<std::shared_ptr<Edge>>& path, int final_color) {
+    for (int i = 0; i < static_cast<int>(path.size()) - 1; ++i) {
+        path[i]->forest = path[i + 1]->forest;
+    }
+    path.back()->forest = final_color;
 }
