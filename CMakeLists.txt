@@ -7,4 +7,6 @@ add_executable(k_forests main.cpp
         GraphicMatroid.h
         GraphicMatroid.cpp
         Tester.h
-        Tester.cpp)
+        Tester.cpp
+        DisjointSets.h
+        DisjointSets.cpp)

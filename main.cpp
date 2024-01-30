@@ -5,6 +5,8 @@
 #include <filesystem>
 #include "GraphicMatroid.h"
 #include "Tester.h"
+#include "DisjointSets.h"
+
 
 std::vector<std::vector<int>> ReadAdjList(const std::string &path) {
     std::vector<std::vector<int>> adj_list;
@@ -38,7 +40,7 @@ std::vector<std::vector<int>> ReadAdjList(const std::string &path) {
     return adj_list;
 }
 
-std::vector<int> ReadAnswers(const std::string& path) {
+std::vector<int> ReadAnswers(const std::string &path) {
     std::vector<int> answers;
     std::fstream input_file(path);
 
@@ -103,7 +105,7 @@ void RunRandomTests() {
             Tester tester(adj_list, answers);
             auto times = tester.RunForAllK();
 
-            for (double time : times) {
+            for (double time: times) {
                 std::cout << time << " ";
             }
             std::cout << "\n";
@@ -114,7 +116,25 @@ void RunRandomTests() {
 }
 
 int main() {
+
     RunRandomTests();
+
+    /*std::string prefix = std::filesystem::current_path().string() + "/../tests/random-graphs/";
+
+    std::string filename_graph = "8-21.txt";
+    std::string filename_answers = "8-21-answers.txt";
+
+    auto adj_list = ReadAdjList(prefix + filename_graph);
+    auto answers = ReadAnswers(prefix + filename_answers);
+
+    GraphicMatroid graph(adj_list);
+    graph.GenerateKForests(3);
+    graph.PrintGraph();
+
+    auto forests = graph.GetForests();
+    for (const auto& forest : forests) {
+        std::cout << forest.size() << " ";
+    }*/
 
     return 0;
 }

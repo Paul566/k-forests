@@ -75,6 +75,7 @@ void GraphicMatroid::GenerateKForests(int k) {
     for (int i = 0; i < k; ++i) {
         DrawNextForestDFS();
     }
+    InitializeDisjointSets();
 
     while (BlockFlowIndependence()) {};
 }
@@ -150,7 +151,8 @@ int GraphicMatroid::EdgeIsJoining(const std::shared_ptr<Edge> &edge) {
         if (edge->forest == forest_index) {
             continue;
         }
-        if (FindOutEdge(edge, forest_index, all_edges) == nullptr) {
+        if (disjoint_components[forest_index].Representative(edge->Vertices().first) !=
+            disjoint_components[forest_index].Representative(edge->Vertices().second)) {
             return forest_index;
         }
     }
@@ -399,4 +401,20 @@ void GraphicMatroid::AugmentPath(const std::vector<std::shared_ptr<Edge>> &path,
         path[i]->forest = path[i + 1]->forest;
     }
     path.back()->forest = final_color;
+    disjoint_components[final_color].Unite(path.back()->Vertices().first, path.back()->Vertices().second);
+}
+
+void GraphicMatroid::InitializeDisjointSets() {
+    for (int forest_index = 0; forest_index < num_forests; ++forest_index) {
+        DisjointSets next_sets(static_cast<int>(adj_list_.size()));
+        disjoint_components.push_back(next_sets);
+    }
+
+    for (int vertex = 0; vertex < static_cast<int>(adj_list_.size()); ++vertex) {
+        for (const auto &edge: adj_list_[vertex]) {
+            if ((vertex < edge->AnotherVertex(vertex)) && (edge->forest != -1)) {
+                disjoint_components[edge->forest].Unite(vertex, edge->AnotherVertex(vertex));
+            }
+        }
+    }
 }

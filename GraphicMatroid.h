@@ -5,6 +5,7 @@
 #include <vector>
 #include <memory>
 #include <unordered_set>
+#include "DisjointSets.h"
 
 
 struct Edge {
@@ -46,6 +47,7 @@ public:
 private:
     std::vector<std::vector<std::shared_ptr<Edge>>> adj_list_;   // vertices are enumerated from 0
     int num_forests;
+    std::vector<DisjointSets> disjoint_components;
 
     void DrawNextForestDFS();
 
@@ -71,7 +73,9 @@ private:
 
     bool BlockFlowIndependence();
 
-    static void AugmentPath(const std::vector<std::shared_ptr<Edge>>& path, int final_color);
+    void AugmentPath(const std::vector<std::shared_ptr<Edge>>& path, int final_color);
+
+    void InitializeDisjointSets();
 };
 
 
