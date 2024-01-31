@@ -63,6 +63,8 @@ private:
 
     int EdgeIsJoining(const std::shared_ptr<Edge> &edge);
 
+    bool EdgeIsJoiningForForest(const std::shared_ptr<Edge> &edge, int forest_index);
+
     bool TryToAugment();
 
     std::unordered_set<std::shared_ptr<Edge>> EdgeSet();
@@ -71,7 +73,11 @@ private:
 
     std::tuple<bool, std::vector<std::unordered_set<std::shared_ptr<Edge>>>> Layers();
 
+    std::tuple<bool, std::vector<std::unordered_set<std::shared_ptr<Edge>>>> LayersCyclic();
+
     bool BlockFlowIndependence();
+
+    int BlockFlowIndependenceCyclic();
 
     void AugmentPath(const std::vector<std::shared_ptr<Edge>>& path, int final_color);
 

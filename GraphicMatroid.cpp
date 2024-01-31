@@ -77,7 +77,11 @@ void GraphicMatroid::GenerateKForests(int k) {
     }
     InitializeDisjointSets();
 
-    while (BlockFlowIndependence()) {};
+    // PrintGraph();
+
+    // while (BlockFlowIndependence()) {};
+
+    while (BlockFlowIndependenceCyclic() != -1) {};
 }
 
 void GraphicMatroid::PrintGraph() {
@@ -144,9 +148,7 @@ bool GraphicMatroid::FindPathAndAugment(const std::shared_ptr<Edge> &initial_edg
 int GraphicMatroid::EdgeIsJoining(const std::shared_ptr<Edge> &edge) {
     // if the edge is joining, returns the index of the corresponding forest
     // else returns -1
-    // TODO this is slow, rewrite using disjoint sets
 
-    auto all_edges = EdgeSet();
     for (int forest_index = 0; forest_index < num_forests; ++forest_index) {
         if (edge->forest == forest_index) {
             continue;
@@ -417,4 +419,112 @@ void GraphicMatroid::InitializeDisjointSets() {
             }
         }
     }
+}
+
+int GraphicMatroid::BlockFlowIndependenceCyclic() {
+    // Experimental stuff
+    // BlockFlowIndependence procedure but for cyclic paths
+    // returns number of layers, -1 if not successful
+
+    auto layers_output = LayersCyclic();
+    if (!std::get<0>(layers_output)) {
+        return -1;
+    }
+
+    auto layers = std::get<1>(layers_output);
+    std::vector<std::shared_ptr<Edge>> current_path;
+    int next_layer_index = 0;  // next vertex should be in that level
+    while (!((layers[0].empty()) && (current_path.empty()))) {
+        if (next_layer_index == 0) {
+            std::shared_ptr<Edge> next_edge = *layers[0].begin();
+            layers[0].erase(next_edge);
+            ++next_layer_index;
+            current_path.push_back(next_edge);
+        } else {
+            std::shared_ptr<Edge> current_edge = current_path.back();
+            if (next_layer_index == static_cast<int>(layers.size())) {
+                // we are at a final level
+
+                if (EdgeIsJoiningForForest(current_edge, (next_layer_index - 1) % num_forests)) {
+                    AugmentPath(current_path, (next_layer_index - 1) % num_forests);
+                    current_path.clear();
+                    next_layer_index = 0;
+                } else {
+                    --next_layer_index;
+                    current_path.pop_back();
+                }
+            } else {
+                std::shared_ptr<Edge> next_edge = FindOutEdge(current_edge, (next_layer_index - 1) % num_forests,
+                                                              layers[next_layer_index]);
+                if (next_edge == nullptr) {
+                    --next_layer_index;
+                    current_path.pop_back();
+                } else {
+                    layers[next_layer_index].erase(next_edge);
+                    ++next_layer_index;
+                    current_path.push_back(next_edge);
+                }
+            }
+        }
+    }
+
+    return static_cast<int>(layers.size());
+}
+
+std::tuple<bool, std::vector<std::unordered_set<std::shared_ptr<Edge>>>> GraphicMatroid::LayersCyclic() {
+    // Experimental
+    // returns ((T is reachable from s), (l_0, ..., l_d)),
+    // where l_i is at distance i + 1 from s in a cyclic exchange graph
+
+    std::vector<std::unordered_set<std::shared_ptr<Edge>>> layers;
+
+    std::unordered_set<std::shared_ptr<Edge>> unvisited_edges = EdgeSet();
+    int edges_limit = static_cast<int>(unvisited_edges.size());
+
+    std::unordered_set<std::shared_ptr<Edge>> free_edges;
+    auto edge_vector = EdgeVector();
+    for (const auto &edge: edge_vector) {
+        if (edge->forest == -1) {
+            free_edges.insert(edge);
+            unvisited_edges.erase(edge);
+        }
+    }
+    layers.push_back(free_edges);
+
+    int forest_index = 0;
+    for (int counter = 0; counter < edges_limit; ++counter) {
+        std::unordered_set<std::shared_ptr<Edge>> next_layer;
+        for (const auto &edge: layers.back()) {
+            if (EdgeIsJoiningForForest(edge, forest_index)) {
+                return std::forward_as_tuple(true, layers);
+            }
+
+            auto next_level_edge = FindOutEdge(edge, forest_index, unvisited_edges);
+            while (next_level_edge != nullptr) {
+                unvisited_edges.erase(next_level_edge);
+                next_layer.insert(next_level_edge);
+                next_level_edge = FindOutEdge(edge, forest_index, unvisited_edges);
+            }
+        }
+
+        if (next_layer.empty()) {
+            return std::forward_as_tuple(false, layers);
+        }
+
+        layers.push_back(next_layer);
+        ++forest_index;
+        if (forest_index == num_forests) {
+            forest_index = 0;
+        }
+    }
+
+    return std::forward_as_tuple(false, layers);
+}
+
+bool GraphicMatroid::EdgeIsJoiningForForest(const std::shared_ptr<Edge> &edge, int forest_index) {
+    if (edge->forest == forest_index) {
+        return false;
+    }
+    return (disjoint_components[forest_index].Representative(edge->Vertices().first) !=
+            disjoint_components[forest_index].Representative(edge->Vertices().second));
 }
