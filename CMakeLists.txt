@@ -9,4 +9,6 @@ add_executable(k_forests main.cpp
         Tester.h
         Tester.cpp
         DisjointSets.h
-        DisjointSets.cpp)
+        DisjointSets.cpp
+        LinkCutTree.h
+        LinkCutTree.cpp)
