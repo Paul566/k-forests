@@ -17,6 +17,8 @@ public:
 
     void Link(int first, int second, const std::shared_ptr<Edge>& edge);
 
+    std::shared_ptr<Edge> MaxLevelEdge(int first, int second);
+
 private:
     std::vector<int> splay_parent;
     std::vector<int> path_parent;
@@ -36,7 +38,7 @@ private:
 
     bool IsLeftChild(int node);
 
-    int Access(int node);
+    void Access(int node);
 
     void LinkToRoot(int future_child, int future_parent, const std::shared_ptr<Edge>& edge);
 

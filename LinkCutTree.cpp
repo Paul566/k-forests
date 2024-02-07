@@ -114,7 +114,7 @@ bool LinkCutTree::IsLeftChild(int node) {
     return splay_left[splay_parent[node]] == node;
 }
 
-int LinkCutTree::Access(int node) {
+void LinkCutTree::Access(int node) {
     // returns last encountered path_parent
 
     Splay(node);
@@ -126,10 +126,8 @@ int LinkCutTree::Access(int node) {
         Update(node);
     }
 
-    int last_path_parent = node;
     while (path_parent[node] != -1) {
         int current_path_parent = path_parent[node];
-        last_path_parent = current_path_parent;
         Splay(current_path_parent);
 
         if (splay_right[current_path_parent] != -1) {
@@ -144,8 +142,6 @@ int LinkCutTree::Access(int node) {
         Update(current_path_parent);
         Splay(node);
     }
-
-    return last_path_parent;
 }
 
 int LinkCutTree::Root(int node) {
@@ -278,4 +274,34 @@ void LinkCutTree::Update(int node) {
             }
         }
     }
+}
+
+std::shared_ptr<Edge> LinkCutTree::MaxLevelEdge(int first, int second) {
+    // returns edge of maximal level on the path between the input vertices
+
+    if (Root(first) != Root(second)) {
+        return nullptr;
+    }
+
+    Access(first);
+    Access(second);
+
+    Splay(first);
+    std::shared_ptr<Edge> first_candidate = max_level_edges[first];
+
+    Access(first);
+    Splay(second);
+    std::shared_ptr<Edge> second_candidate = max_level_edges[second];
+
+    if (first_candidate == nullptr){
+        return second_candidate;
+    }
+    if (second_candidate == nullptr) {
+        return first_candidate;
+    }
+
+    if (first_candidate->level > second_candidate->level) {
+        return first_candidate;
+    }
+    return second_candidate;
 }
