@@ -183,16 +183,14 @@ void LinkCutTree::Cut(int node) {
     Update(node);
 }
 
-void LinkCutTree::Link(int first, int second, const std::shared_ptr<Edge>& edge) {
+void LinkCutTree::Link(const std::shared_ptr<Edge>& edge) {
     // links nodes first and second, second becomes parent
+
+    int first = edge->Vertices().first;
+    int second = edge->Vertices().second;
 
     if (Root(first) == Root(second)) {
         throw std::runtime_error("in Link: trying to link two nodes in the same tree");
-    }
-
-    if (!(((edge->Vertices().first == first) && (edge->Vertices().second == second)) ||
-            ((edge->Vertices().first == second) && (edge->Vertices().second == first)))) {
-        throw std::runtime_error("in Link: edge has wrong ends");
     }
 
     MakeRoot(first);
@@ -282,6 +280,9 @@ std::shared_ptr<Edge> LinkCutTree::MaxLevelEdge(int first, int second) {
     if (Root(first) != Root(second)) {
         return nullptr;
     }
+    if (IsAnEdge(first, second)) {
+        return nullptr;
+    }
 
     Access(first);
     Access(second);
@@ -304,4 +305,37 @@ std::shared_ptr<Edge> LinkCutTree::MaxLevelEdge(int first, int second) {
         return first_candidate;
     }
     return second_candidate;
+}
+
+void LinkCutTree::CutEdge(const std::shared_ptr<Edge>& edge) {
+    if (!IsAnEdge(edge->Vertices().first, edge->Vertices().second)) {
+        throw std::runtime_error("in CutEdge: no such edge in the forest");
+    }
+
+    if (edge == edges[edge->Vertices().first]) {
+        Cut(edge->Vertices().first);
+    } else {
+        Cut(edge->Vertices().second);
+    }
+}
+
+void LinkCutTree::UpdateEdgeLevel(const std::shared_ptr<Edge>& edge, int new_level) {
+    int lower_vertex = edge->Vertices().first;
+    if (edge == edges[edge->Vertices().second]) {
+        lower_vertex = edge->Vertices().second;
+    }
+
+    CutEdge(edge);
+    edge->level = new_level;
+    LinkToRoot(lower_vertex, edge->AnotherVertex(lower_vertex), edge);
+}
+
+bool LinkCutTree::IsAnEdge(int first, int second) {
+    if (edges[first]->AnotherVertex(first) == second) {
+        return true;
+    }
+    if (edges[second]->AnotherVertex(second) == first) {
+        return true;
+    }
+    return false;
 }

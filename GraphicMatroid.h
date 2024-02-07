@@ -7,6 +7,7 @@
 #include <unordered_set>
 #include "DisjointSets.h"
 #include "Edge.h"
+#include "LinkCutTree.h"
 
 class GraphicMatroid {
 public:
@@ -22,6 +23,7 @@ private:
     std::vector<std::vector<std::shared_ptr<Edge>>> adj_list_;   // vertices are enumerated from 0
     int num_forests;
     std::vector<DisjointSets> disjoint_components;
+    std::vector<LinkCutTree> forests;
 
     void DrawNextForestDFS();
 
@@ -45,7 +47,7 @@ private:
 
     std::vector<std::shared_ptr<Edge>> EdgeVector();
 
-    std::tuple<bool, std::vector<std::unordered_set<std::shared_ptr<Edge>>>> Layers();
+    std::tuple<bool, std::vector<std::shared_ptr<Edge>>> Layers();
 
     std::tuple<bool, std::vector<std::unordered_set<std::shared_ptr<Edge>>>> LayersCyclic();
 
@@ -56,6 +58,10 @@ private:
     void AugmentPath(const std::vector<std::shared_ptr<Edge>> &path, int final_color);
 
     void InitializeDisjointSets();
+
+    void InitializeForests();
+
+    void UpdateEdgeLevel(const std::shared_ptr<Edge>& edge, int new_level);
 };
 
 

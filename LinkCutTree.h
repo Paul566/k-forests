@@ -15,9 +15,15 @@ public:
 
     void Cut(int node);
 
-    void Link(int first, int second, const std::shared_ptr<Edge>& edge);
+    void CutEdge(const std::shared_ptr<Edge>& edge);
+
+    void Link(const std::shared_ptr<Edge>& edge);
+
+    void LinkToRoot(int future_child, int future_parent, const std::shared_ptr<Edge>& edge);
 
     std::shared_ptr<Edge> MaxLevelEdge(int first, int second);
+
+    void UpdateEdgeLevel(const std::shared_ptr<Edge>& edge, int new_level);
 
 private:
     std::vector<int> splay_parent;
@@ -40,8 +46,6 @@ private:
 
     void Access(int node);
 
-    void LinkToRoot(int future_child, int future_parent, const std::shared_ptr<Edge>& edge);
-
     void MakeRoot(int node);
 
     void ReversePath(int node);
@@ -49,6 +53,8 @@ private:
     void UpdateSplaySubTree(int node);
 
     void Update(int node);
+
+    bool IsAnEdge(int first, int second);
 };
 
 
