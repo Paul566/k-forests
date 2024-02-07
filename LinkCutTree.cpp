@@ -7,6 +7,8 @@ LinkCutTree::LinkCutTree(int size) {
     path_parent = std::vector<int>(size, -1);
     splay_left = std::vector<int>(size, -1);
     splay_right = std::vector<int>(size, -1);
+    edges = std::vector<std::shared_ptr<Edge>>(size, nullptr);
+    max_level_edges = std::vector<std::shared_ptr<Edge>>(size, nullptr);
 }
 
 void LinkCutTree::SplayRotateLeft(int node) {
@@ -35,6 +37,9 @@ void LinkCutTree::SplayRotateLeft(int node) {
             splay_right[current_parent] = left_child;
         }
     }
+
+    Update(node);
+    Update(left_child);
 }
 
 void LinkCutTree::SplayRotateRight(int node) {
@@ -63,6 +68,9 @@ void LinkCutTree::SplayRotateRight(int node) {
             splay_right[current_parent] = right_child;
         }
     }
+
+    Update(node);
+    Update(right_child);
 }
 
 void LinkCutTree::Splay(int node) {
@@ -115,6 +123,7 @@ int LinkCutTree::Access(int node) {
         path_parent[splay_right[node]] = node;
         splay_parent[splay_right[node]] = -1;
         splay_right[node] = -1;
+        Update(node);
     }
 
     int last_path_parent = node;
@@ -132,6 +141,7 @@ int LinkCutTree::Access(int node) {
         splay_parent[node] = current_path_parent;
         path_parent[node] = -1;
 
+        Update(current_path_parent);
         Splay(node);
     }
 
@@ -148,38 +158,49 @@ int LinkCutTree::Root(int node) {
     return node;
 }
 
-void LinkCutTree::LinkToRoot(int future_child, int future_parent) {
+void LinkCutTree::LinkToRoot(int future_child, int future_parent, const std::shared_ptr<Edge>& edge) {
     // future_child has to be the root of its represented tree
 
     if (Root(future_child) != future_child) {
-        throw std::runtime_error("in Link: future_child has to be the root of its tree");
+        throw std::runtime_error("in LinkToRoot: future_child has to be the root of its tree");
     }
 
     if (future_child == Root(future_parent)) {
-        return;
+        throw std::runtime_error("in LinkToRoot: trying to link two nodes in the same tree");
     }
 
     Access(future_child);
     Access(future_parent);
+
     splay_left[future_child] = future_parent;
     splay_parent[future_parent] = future_child;
+    edges[future_child] = edge;
+    Update(future_child);
+    Update(future_parent);
 }
 
 void LinkCutTree::Cut(int node) {
     Access(node);
+    edges[node] = nullptr;
     splay_parent[splay_left[node]] = -1;
     splay_left[node] = -1;
+    Update(node);
 }
 
-void LinkCutTree::Link(int first, int second) {
+void LinkCutTree::Link(int first, int second, const std::shared_ptr<Edge>& edge) {
     // links nodes first and second, second becomes parent
 
     if (Root(first) == Root(second)) {
-        return;
+        throw std::runtime_error("in Link: trying to link two nodes in the same tree");
+    }
+
+    if (!(((edge->Vertices().first == first) && (edge->Vertices().second == second)) ||
+            ((edge->Vertices().first == second) && (edge->Vertices().second == first)))) {
+        throw std::runtime_error("in Link: edge has wrong ends");
     }
 
     MakeRoot(first);
-    LinkToRoot(first, second);
+    LinkToRoot(first, second, edge);
 }
 
 void LinkCutTree::MakeRoot(int node) {
@@ -206,4 +227,55 @@ void LinkCutTree::MakeRoot(int node) {
         }
     }
 
+    ReversePath(node);
+    UpdateSplaySubTree(node);
+}
+
+void LinkCutTree::ReversePath(int node) {
+    // reverses edges on the path to root
+    if (edges[node] != nullptr) {
+        // node is not root
+        ReversePath(edges[node]->AnotherVertex(node));
+        edges[edges[node]->AnotherVertex(node)] = edges[node];
+        edges[node] = nullptr;
+    }
+}
+
+void LinkCutTree::UpdateSplaySubTree(int node) {
+    if (splay_left[node] != -1) {
+        UpdateSplaySubTree(splay_left[node]);
+    }
+    if (splay_right[node] != -1) {
+        UpdateSplaySubTree(splay_right[node]);
+    }
+    Update(node);
+}
+
+void LinkCutTree::Update(int node) {
+    // updates the max_level_edge associated to node
+
+    max_level_edges[node] = edges[node];
+
+    if (splay_left[node] != -1) {
+        if (max_level_edges[splay_left[node]] != nullptr) {
+            if (max_level_edges[node] != nullptr) {
+                if (max_level_edges[splay_left[node]]->level > max_level_edges[node]->level) {
+                    max_level_edges[node] = max_level_edges[splay_left[node]];
+                }
+            } else {
+                max_level_edges[node] = max_level_edges[splay_left[node]];
+            }
+        }
+    }
+    if (splay_right[node] != -1) {
+        if (max_level_edges[splay_right[node]] != nullptr) {
+            if (max_level_edges[node] != nullptr) {
+                if (max_level_edges[splay_right[node]]->level > max_level_edges[node]->level) {
+                    max_level_edges[node] = max_level_edges[splay_right[node]];
+                }
+            } else {
+                max_level_edges[node] = max_level_edges[splay_right[node]];
+            }
+        }
+    }
 }

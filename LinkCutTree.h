@@ -3,6 +3,9 @@
 
 
 #include <vector>
+#include <memory>
+#include "Edge.h"
+
 
 class LinkCutTree {
 public:
@@ -12,13 +15,18 @@ public:
 
     void Cut(int node);
 
-    void Link(int first, int second);
+    void Link(int first, int second, const std::shared_ptr<Edge>& edge);
 
 private:
     std::vector<int> splay_parent;
     std::vector<int> path_parent;
     std::vector<int> splay_left;
     std::vector<int> splay_right;
+    std::vector<std::shared_ptr<Edge>> edges;
+    // edges[i] is the edge that goes up from i-th vertex in the represented tree
+    std::vector<std::shared_ptr<Edge>> max_level_edges;
+    // max_level_edges[i] is the edge of maximal level associated to some vertex
+    // in the node's subtree in its splay tree
 
     void Splay(int node);
 
@@ -30,9 +38,15 @@ private:
 
     int Access(int node);
 
-    void LinkToRoot(int future_child, int future_parent);
+    void LinkToRoot(int future_child, int future_parent, const std::shared_ptr<Edge>& edge);
 
     void MakeRoot(int node);
+
+    void ReversePath(int node);
+
+    void UpdateSplaySubTree(int node);
+
+    void Update(int node);
 };
 
 
