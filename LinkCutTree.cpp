@@ -13,6 +13,7 @@ void LinkCutTree::SplayRotateLeft(int node) {
     // brings left child of node to the top
 
     int left_child = splay_left[node];
+    int current_parent = splay_parent[node];
     if (left_child == -1) {
         throw std::runtime_error("tried to rotate left while not having a left child");
     }
@@ -26,12 +27,21 @@ void LinkCutTree::SplayRotateLeft(int node) {
     if (splay_left[node] != -1) {
         splay_parent[splay_left[node]] = node;
     }
+
+    if (current_parent != -1) {
+        if (splay_left[current_parent] == node) {
+            splay_left[current_parent] = left_child;
+        } else {
+            splay_right[current_parent] = left_child;
+        }
+    }
 }
 
 void LinkCutTree::SplayRotateRight(int node) {
     // brings right child of node to the top
 
     int right_child = splay_right[node];
+    int current_parent = splay_parent[node];
     if (right_child == -1) {
         throw std::runtime_error("tried to rotate right while not having a right child");
     }
@@ -44,6 +54,14 @@ void LinkCutTree::SplayRotateRight(int node) {
 
     if (splay_right[node] != -1) {
         splay_parent[splay_right[node]] = node;
+    }
+
+    if (current_parent != -1) {
+        if (splay_left[current_parent] == node) {
+            splay_left[current_parent] = right_child;
+        } else {
+            splay_right[current_parent] = right_child;
+        }
     }
 }
 
