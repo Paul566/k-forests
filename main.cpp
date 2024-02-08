@@ -6,6 +6,7 @@
 #include "GraphicMatroid.h"
 #include "Tester.h"
 #include "DisjointSets.h"
+#include "LinkCutTree.h"
 
 
 std::vector<std::vector<int>> ReadAdjList(const std::string &path) {
@@ -121,20 +122,15 @@ int main() {
 
     /*std::string prefix = std::filesystem::current_path().string() + "/../tests/random-graphs/";
 
-    std::string filename_graph = "8-21.txt";
-    std::string filename_answers = "8-21-answers.txt";
+    std::string filename_graph = "7-18.txt";
+    std::string filename_answers = "7-18-answers.txt";
 
     auto adj_list = ReadAdjList(prefix + filename_graph);
     auto answers = ReadAnswers(prefix + filename_answers);
 
     GraphicMatroid graph(adj_list);
     graph.GenerateKForests(3);
-    graph.PrintGraph();
-
-    auto forests = graph.GetForests();
-    for (const auto& forest : forests) {
-        std::cout << forest.size() << " ";
-    }*/
+    graph.PrintGraph();*/
 
     return 0;
 }

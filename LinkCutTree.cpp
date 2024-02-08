@@ -38,6 +38,9 @@ void LinkCutTree::SplayRotateLeft(int node) {
         }
     }
 
+    path_parent[left_child] = path_parent[node];
+    path_parent[node] = -1;
+
     Update(node);
     Update(left_child);
 }
@@ -68,6 +71,9 @@ void LinkCutTree::SplayRotateRight(int node) {
             splay_right[current_parent] = right_child;
         }
     }
+
+    path_parent[right_child] = path_parent[node];
+    path_parent[node] = -1;
 
     Update(node);
     Update(right_child);
@@ -114,7 +120,7 @@ bool LinkCutTree::IsLeftChild(int node) {
     return splay_left[splay_parent[node]] == node;
 }
 
-void LinkCutTree::Access(int node) {
+int LinkCutTree::Access(int node) {
     // returns last encountered path_parent
 
     Splay(node);
@@ -126,8 +132,10 @@ void LinkCutTree::Access(int node) {
         Update(node);
     }
 
+    int last_path_parent = node;
     while (path_parent[node] != -1) {
         int current_path_parent = path_parent[node];
+        last_path_parent = current_path_parent;
         Splay(current_path_parent);
 
         if (splay_right[current_path_parent] != -1) {
@@ -142,6 +150,8 @@ void LinkCutTree::Access(int node) {
         Update(current_path_parent);
         Splay(node);
     }
+
+    return last_path_parent;
 }
 
 int LinkCutTree::Root(int node) {
@@ -285,7 +295,17 @@ std::shared_ptr<Edge> LinkCutTree::MaxLevelEdge(int first, int second) {
     }
 
     Access(first);
-    Access(second);
+    int least_common_ancestor = Access(second);
+
+    if (least_common_ancestor == second) {
+        Splay(first);
+        return max_level_edges[first];
+    }
+    if (least_common_ancestor == first) {
+        Access(first);
+        Splay(second);
+        return max_level_edges[second];
+    }
 
     Splay(first);
     std::shared_ptr<Edge> first_candidate = max_level_edges[first];
@@ -331,11 +351,15 @@ void LinkCutTree::UpdateEdgeLevel(const std::shared_ptr<Edge>& edge, int new_lev
 }
 
 bool LinkCutTree::IsAnEdge(int first, int second) {
-    if (edges[first]->AnotherVertex(first) == second) {
-        return true;
+    if (edges[first] != nullptr) {
+        if (edges[first]->AnotherVertex(first) == second) {
+            return true;
+        }
     }
-    if (edges[second]->AnotherVertex(second) == first) {
-        return true;
+    if (edges[second] != nullptr) {
+        if (edges[second]->AnotherVertex(second) == first) {
+            return true;
+        }
     }
     return false;
 }

@@ -44,7 +44,7 @@ private:
 
     bool IsLeftChild(int node);
 
-    void Access(int node);
+    int Access(int node);
 
     void MakeRoot(int node);
 

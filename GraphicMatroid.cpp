@@ -312,7 +312,7 @@ std::tuple<bool, std::vector<std::shared_ptr<Edge>>> GraphicMatroid::Layers() {
                         break;
                     }
                     next_layer.push_back(next_level_edge);
-                    forests[forest_index].UpdateEdgeLevel(edge, static_cast<int>(layers.size()));
+                    forests[forest_index].UpdateEdgeLevel(next_level_edge, static_cast<int>(layers.size()));
                     next_level_edge = forests[forest_index].MaxLevelEdge(edge->Vertices().first,
                                                                          edge->Vertices().second);
                 }
@@ -373,24 +373,29 @@ bool GraphicMatroid::BlockFlowIndependence() {
 
             std::shared_ptr<Edge> next_edge = forests[0].MaxLevelEdge(current_edge->Vertices().first,
                                                                       current_edge->Vertices().second);
-            for (int k = 1; k < num_forests; ++k) {
+
+            for (int forest_index = 1; forest_index < num_forests; ++forest_index) {
                 if (next_edge != nullptr) {
                     if (next_edge->level >= next_layer_index) {
                         break;
                     }
                 }
-                next_edge = forests[k].MaxLevelEdge(current_edge->Vertices().first,
-                                                    current_edge->Vertices().second);
+                next_edge = forests[forest_index].MaxLevelEdge(current_edge->Vertices().first,
+                                                               current_edge->Vertices().second);
             }
 
             if (next_edge == nullptr) {
                 --next_layer_index;
-                forests[current_edge->forest].UpdateEdgeLevel(current_edge, INT32_MIN);
+                if (current_edge->forest != -1) {
+                    forests[current_edge->forest].UpdateEdgeLevel(current_edge, INT32_MIN);
+                }
                 current_path.pop_back();
             } else {
-                if (next_edge->level < next_layer_index) {
+                if ((next_edge->level < next_layer_index) || (next_edge->level == INT32_MAX)) {
                     --next_layer_index;
-                    forests[current_edge->forest].UpdateEdgeLevel(current_edge, INT32_MIN);
+                    if (current_edge->forest != -1) {
+                        forests[current_edge->forest].UpdateEdgeLevel(current_edge, INT32_MIN);
+                    }
                     current_path.pop_back();
                 } else {
                     ++next_layer_index;
