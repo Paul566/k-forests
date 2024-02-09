@@ -5,13 +5,14 @@
 #include <vector>
 #include <memory>
 #include <unordered_set>
+#include <random>
 #include "DisjointSets.h"
 #include "Edge.h"
 #include "LinkCutTree.h"
 
 class GraphicMatroid {
 public:
-    explicit GraphicMatroid(const std::vector<std::vector<int>> &adj_list);
+    explicit GraphicMatroid(const std::vector<std::vector<int>> &adj_list, std::string  initialization_type);
 
     std::vector<std::vector<std::pair<int, int>>> GetForests();
 
@@ -19,11 +20,16 @@ public:
 
     void PrintGraph();
 
+    int NextRandomIndex(std::vector<int>& indices, int& num_already_drawn);
+
+
 private:
     std::vector<std::vector<std::shared_ptr<Edge>>> adj_list_;   // vertices are enumerated from 0
+    std::string initialization_type_;   // BFS or DFS
     int num_forests;
     std::vector<DisjointSets> disjoint_components;
     std::vector<LinkCutTree> forests;
+    std::mt19937 generator;
 
     void DrawNextForestDFS();
 

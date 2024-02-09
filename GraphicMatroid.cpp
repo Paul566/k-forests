@@ -3,13 +3,16 @@
 #include <queue>
 #include <unordered_map>
 #include <algorithm>
+#include <utility>
 #include "GraphicMatroid.h"
 
-GraphicMatroid::GraphicMatroid(const std::vector<std::vector<int>> &adj_list) {
+GraphicMatroid::GraphicMatroid(const std::vector<std::vector<int>> &adj_list, std::string initialization_type)
+        : initialization_type_(std::move(initialization_type)) {
     // adj_list has to have vertices enumerated from 0
 
     num_forests = 0;
     adj_list_ = std::vector<std::vector<std::shared_ptr<Edge>>>(adj_list.size());
+    generator = std::mt19937(239);
 
     for (int i = 0; i < static_cast<int>(adj_list.size()); ++i) {
         adj_list_[i].reserve(adj_list[i].size());
@@ -72,9 +75,20 @@ void GraphicMatroid::GenerateKForests(int k) {
         return;
     }
 
-    for (int i = 0; i < k; ++i) {
-        DrawNextForestDFS();
+    if (initialization_type_ == "DFS") {
+        for (int i = 0; i < k; ++i) {
+            DrawNextForestDFS();
+        }
+    } else {
+        if (initialization_type_ == "BFS") {
+            for (int i = 0; i < k; ++i) {
+                DrawNextForestBFS();
+            }
+        } else {
+            throw std::runtime_error("unknown initialization type: " + initialization_type_);
+        }
     }
+
     InitializeDisjointSets();
     InitializeForests();
 
@@ -562,4 +576,17 @@ void GraphicMatroid::InitializeForests() {
             }
         }
     }
+}
+
+int GraphicMatroid::NextRandomIndex(std::vector<int>& indices, int& num_already_drawn) {
+    if (num_already_drawn >= static_cast<int>(indices.size())) {
+        throw std::runtime_error("in NextRandomIndex: already drawn everything");
+    }
+
+    std::uniform_int_distribution<int> distribution(num_already_drawn, static_cast<int>(indices.size()) - 1);
+    int answer_index = distribution(generator);
+    int answer = indices[answer_index];
+    std::swap(indices[answer_index], indices[num_already_drawn]);
+    ++num_already_drawn;
+    return answer;
 }
