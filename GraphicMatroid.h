@@ -47,7 +47,7 @@ private:
 
     std::vector<std::shared_ptr<Edge>> EdgeVector();
 
-    std::tuple<bool, std::vector<std::shared_ptr<Edge>>> Layers();
+    std::tuple<int, std::vector<std::shared_ptr<Edge>>> Layers();
 
     std::tuple<bool, std::vector<std::unordered_set<std::shared_ptr<Edge>>>> LayersCyclic();
 
@@ -60,8 +60,6 @@ private:
     void InitializeDisjointSets();
 
     void InitializeForests();
-
-    void UpdateEdgeLevel(const std::shared_ptr<Edge>& edge, int new_level);
 };
 
 

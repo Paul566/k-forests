@@ -279,8 +279,9 @@ std::unordered_set<std::shared_ptr<Edge>> GraphicMatroid::EdgeSet() {
     return edge_set;
 }
 
-std::tuple<bool, std::vector<std::shared_ptr<Edge>>> GraphicMatroid::Layers() {
-    // updates layers of edges, returns true if T is reachable
+std::tuple<int, std::vector<std::shared_ptr<Edge>>> GraphicMatroid::Layers() {
+    // updates layers of edges, returns the number of layers if T is reachable,
+    // else -1
     // also returns uncovered edges
 
     std::vector<std::vector<std::shared_ptr<Edge>>> layers;
@@ -301,7 +302,7 @@ std::tuple<bool, std::vector<std::shared_ptr<Edge>>> GraphicMatroid::Layers() {
         std::vector<std::shared_ptr<Edge>> next_layer;
         for (const auto &edge: layers.back()) {
             if (EdgeIsJoining(edge) != -1) {
-                return std::forward_as_tuple(true, free_edges);
+                return std::forward_as_tuple(static_cast<int>(layers.size()), free_edges);
             }
 
             for (int forest_index = 0; forest_index < num_forests; ++forest_index) {
@@ -320,13 +321,13 @@ std::tuple<bool, std::vector<std::shared_ptr<Edge>>> GraphicMatroid::Layers() {
         }
 
         if (next_layer.empty()) {
-            return std::forward_as_tuple(false, free_edges);
+            return std::forward_as_tuple(-1, free_edges);
         }
 
         layers.push_back(next_layer);
     }
 
-    return std::forward_as_tuple(false, free_edges);
+    return std::forward_as_tuple(-1, free_edges);
 }
 
 std::vector<std::shared_ptr<Edge>> GraphicMatroid::EdgeVector() {
@@ -350,7 +351,8 @@ bool GraphicMatroid::BlockFlowIndependence() {
     // returns true if success
 
     auto layers_output = Layers();
-    if (!std::get<0>(layers_output)) {
+    int num_layers = std::get<0>(layers_output);
+    if (num_layers == -1) {
         return false;
     }
 
@@ -363,12 +365,14 @@ bool GraphicMatroid::BlockFlowIndependence() {
         while (!current_path.empty()) {
             std::shared_ptr<Edge> current_edge = current_path.back();
 
-            int edge_is_joining = EdgeIsJoining(current_edge);
-            if (edge_is_joining != -1) {
-                AugmentPath(current_path, edge_is_joining);
-                current_path.clear();
-                next_layer_index = 0;
-                break;
+            if (next_layer_index == num_layers) {
+                int edge_is_joining = EdgeIsJoining(current_edge);
+                if (edge_is_joining != -1) {
+                    AugmentPath(current_path, edge_is_joining);
+                    current_path.clear();
+                    next_layer_index = 0;
+                    break;
+                }
             }
 
             std::shared_ptr<Edge> next_edge = forests[0].MaxLevelEdge(current_edge->Vertices().first,
