@@ -6,9 +6,6 @@
 
 Tester::Tester(const std::vector<std::vector<int>> &adj_list, const std::vector<int> &ground_truth_sizes) :
         adj_list_(adj_list), ground_truth_sizes_(ground_truth_sizes) {
-    if (adj_list.size() + 1 != ground_truth_sizes.size()) {
-        throw std::runtime_error("the size of the answers list is not n + 1");
-    }
 }
 
 double Tester::RunTest(int k) {
@@ -24,6 +21,9 @@ double Tester::RunTest(int k) {
     auto forests = graph.GetForests();
     if (!ForestsAreDisjoint(forests)) {
         throw std::runtime_error("forests are not disjoint");
+    }
+    if (adj_list_.size() + 1 != ground_truth_sizes_.size()) {
+        throw std::runtime_error("the size of the answers list is not n + 1");
     }
     if (ground_truth_sizes_[k] != SumOfSizes(forests)) {
         throw std::runtime_error("size is wrong");
@@ -121,5 +121,21 @@ std::vector<double> Tester::RunForAllK() {
     }
 
     return times;
+}
+
+std::pair<double, int> Tester::GetTimeAndSize(int k) {
+    // returns (time, size_of_the_answer)
+    // does not run any checks
+
+    GraphicMatroid graph(adj_list_);
+
+    auto start = std::chrono::high_resolution_clock::now();
+    graph.GenerateKForests(k);
+    auto stop = std::chrono::high_resolution_clock::now();
+
+    auto forests = graph.GetForests();
+    double duration = static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(
+            stop - start).count()) / 1'000'000;
+    return {duration, SumOfSizes(forests)};
 }
 

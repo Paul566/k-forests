@@ -12,6 +12,8 @@ public:
 
     std::vector<double> RunForAllK();
 
+    std::pair<double, int> GetTimeAndSize(int k);
+
 private:
     std::vector<std::vector<int>> adj_list_;
     std::vector<int> ground_truth_sizes_;
