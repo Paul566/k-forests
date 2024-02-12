@@ -61,7 +61,7 @@ private:
 
     std::vector<std::shared_ptr<Edge>> EdgeVector();
 
-    std::tuple<int, std::vector<std::shared_ptr<Edge>>> Layers();
+    bool Layers(std::vector<std::shared_ptr<Edge>>& uncovered_edges, std::vector<int>& layer_sizes);
 
     std::tuple<bool, std::vector<std::unordered_set<std::shared_ptr<Edge>>>> LayersCyclic();
 

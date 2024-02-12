@@ -6,7 +6,8 @@
 #include <utility>
 #include "GraphicMatroid.h"
 
-GraphicMatroid::GraphicMatroid(const std::vector<std::vector<int>> &adj_list, int num_forests, std::string initialization_type)
+GraphicMatroid::GraphicMatroid(const std::vector<std::vector<int>> &adj_list, int num_forests,
+                               std::string initialization_type)
         : initialization_type_(std::move(initialization_type)), num_forests_(num_forests) {
     // adj_list has to have vertices enumerated from 0
 
@@ -303,30 +304,29 @@ std::unordered_set<std::shared_ptr<Edge>> GraphicMatroid::EdgeSet() {
     return edge_set;
 }
 
-std::tuple<int, std::vector<std::shared_ptr<Edge>>> GraphicMatroid::Layers() {
-    // updates layers of edges, returns the number of layers if T is reachable,
-    // else -1
-    // also returns uncovered edges
+bool GraphicMatroid::Layers(std::vector<std::shared_ptr<Edge>> &uncovered_edges, std::vector<int> &layer_sizes) {
+    // updates layers of edges, returns true if T is reachable,
+    // also updates uncovered edges and sizes of layers
 
-    std::vector<std::vector<std::shared_ptr<Edge>>> layers;
+    std::vector<std::shared_ptr<Edge>> previous_layer;
 
-    std::vector<std::shared_ptr<Edge>> free_edges;
     auto edge_vector = EdgeVector();
     int edges_limit = static_cast<int>(edge_vector.size());
     for (const auto &edge: edge_vector) {
         if (edge->forest == -1) {
-            free_edges.push_back(edge);
+            uncovered_edges.push_back(edge);
         } else {
             forests[edge->forest].UpdateEdgeLevel(edge, INT32_MAX);
         }
     }
-    layers.push_back(free_edges);
+    layer_sizes.push_back(static_cast<int>(uncovered_edges.size()));
+    previous_layer = uncovered_edges;
 
     for (int counter = 0; counter < edges_limit; ++counter) {
         std::vector<std::shared_ptr<Edge>> next_layer;
-        for (const auto &edge: layers.back()) {
+        for (const auto &edge: previous_layer) {
             if (EdgeIsJoining(edge) != -1) {
-                return std::forward_as_tuple(static_cast<int>(layers.size()), free_edges);
+                return true;
             }
 
             for (int forest_index = 0; forest_index < num_forests_; ++forest_index) {
@@ -339,7 +339,7 @@ std::tuple<int, std::vector<std::shared_ptr<Edge>>> GraphicMatroid::Layers() {
                         break;
                     }
                     next_layer.push_back(next_level_edge);
-                    forests[forest_index].UpdateEdgeLevel(next_level_edge, static_cast<int>(layers.size()));
+                    forests[forest_index].UpdateEdgeLevel(next_level_edge, static_cast<int>(layer_sizes.size()));
                     next_level_edge = forests[forest_index].MaxLevelEdge(edge->Vertices().first,
                                                                          edge->Vertices().second);
                     ++num_find_edge_levels;
@@ -348,13 +348,14 @@ std::tuple<int, std::vector<std::shared_ptr<Edge>>> GraphicMatroid::Layers() {
         }
 
         if (next_layer.empty()) {
-            return std::forward_as_tuple(-1, free_edges);
+            return false;
         }
 
-        layers.push_back(next_layer);
+        layer_sizes.push_back(static_cast<int>(next_layer.size()));
+        previous_layer = std::move(next_layer);
     }
 
-    return std::forward_as_tuple(-1, free_edges);
+    return false;
 }
 
 std::vector<std::shared_ptr<Edge>> GraphicMatroid::EdgeVector() {
@@ -377,13 +378,14 @@ bool GraphicMatroid::BlockFlowIndependence() {
     // BlockFlowIndependence procedure from Terao, "Faster Matroid Partition Algorithms"
     // returns true if success
 
-    auto layers_output = Layers();
-    int num_layers = std::get<0>(layers_output);
-    if (num_layers == -1) {
+    std::vector<std::shared_ptr<Edge>> uncovered_edges;
+    std::vector<int> layer_sizes;
+    bool success = Layers(uncovered_edges, layer_sizes);
+    if (!success) {
         return false;
     }
+    int num_layers = static_cast<int>(layer_sizes.size());
 
-    auto uncovered_edges = std::get<1>(layers_output);
     std::vector<std::shared_ptr<Edge>> current_path;
     for (const auto &initial_edge: uncovered_edges) {
         current_path.push_back(initial_edge);
@@ -393,12 +395,27 @@ bool GraphicMatroid::BlockFlowIndependence() {
             std::shared_ptr<Edge> current_edge = current_path.back();
 
             if (next_layer_index == num_layers) {
+                // we are at a final level, if current_edge is not joining, leave it
                 int edge_is_joining = EdgeIsJoining(current_edge);
                 if (edge_is_joining != -1) {
                     AugmentPath(current_path, edge_is_joining);
                     current_path.clear();
                     next_layer_index = 0;
+                    for (int &size: layer_sizes) {
+                        --size;
+                    }
                     break;
+                } else {
+                    layer_sizes[next_layer_index - 1] -= 1;
+                    if (layer_sizes[next_layer_index - 1] <= 0) {
+                        return true;
+                    }
+                    --next_layer_index;
+                    if (current_edge->forest != -1) {
+                        forests[current_edge->forest].UpdateEdgeLevel(current_edge, INT32_MIN);
+                    }
+                    current_path.pop_back();
+                    continue;
                 }
             }
 
@@ -418,6 +435,10 @@ bool GraphicMatroid::BlockFlowIndependence() {
             }
 
             if (next_edge == nullptr) {
+                layer_sizes[next_layer_index - 1] -= 1;
+                if (layer_sizes[next_layer_index - 1] <= 0) {
+                    return true;
+                }
                 --next_layer_index;
                 if (current_edge->forest != -1) {
                     forests[current_edge->forest].UpdateEdgeLevel(current_edge, INT32_MIN);
@@ -425,6 +446,10 @@ bool GraphicMatroid::BlockFlowIndependence() {
                 current_path.pop_back();
             } else {
                 if ((next_edge->level < next_layer_index) || (next_edge->level == INT32_MAX)) {
+                    layer_sizes[next_layer_index - 1] -= 1;
+                    if (layer_sizes[next_layer_index - 1] <= 0) {
+                        return true;
+                    }
                     --next_layer_index;
                     if (current_edge->forest != -1) {
                         forests[current_edge->forest].UpdateEdgeLevel(current_edge, INT32_MIN);
@@ -601,7 +626,7 @@ void GraphicMatroid::InitializeForests() {
     }
 }
 
-int GraphicMatroid::NextRandomIndex(std::vector<int>& indices, int& num_already_drawn) {
+int GraphicMatroid::NextRandomIndex(std::vector<int> &indices, int &num_already_drawn) {
     if (num_already_drawn >= static_cast<int>(indices.size())) {
         throw std::runtime_error("in NextRandomIndex: already drawn everything");
     }
@@ -625,7 +650,7 @@ void GraphicMatroid::InitializeRandomForests() {
         disjoint_components.push_back(next_sets);
     }
 
-    for (const auto& edge : edges) {
+    for (const auto &edge: edges) {
         std::vector<int> forest_indices;
         forest_indices.reserve(num_forests_);
         for (int i = 0; i < num_forests_; ++i) {
