@@ -6,13 +6,18 @@
 #include <utility>
 #include "GraphicMatroid.h"
 
-GraphicMatroid::GraphicMatroid(const std::vector<std::vector<int>> &adj_list, std::string initialization_type)
-        : initialization_type_(std::move(initialization_type)) {
+GraphicMatroid::GraphicMatroid(const std::vector<std::vector<int>> &adj_list, int num_forests, std::string initialization_type)
+        : initialization_type_(std::move(initialization_type)), num_forests_(num_forests) {
     // adj_list has to have vertices enumerated from 0
 
-    num_forests = 0;
-    adj_list_ = std::vector<std::vector<std::shared_ptr<Edge>>>(adj_list.size());
     generator = std::mt19937(239);
+    num_augmentations = 0;
+    shortest_augmentation_length = INT32_MAX;
+    longest_augmentation_length = 0;
+    num_find_edge_levels = 0;
+    num_find_edge_bfi = 0;
+
+    adj_list_ = std::vector<std::vector<std::shared_ptr<Edge>>>(adj_list.size());
 
     for (int i = 0; i < static_cast<int>(adj_list.size()); ++i) {
         adj_list_[i].reserve(adj_list[i].size());
@@ -29,7 +34,7 @@ GraphicMatroid::GraphicMatroid(const std::vector<std::vector<int>> &adj_list, st
 
 std::vector<std::vector<std::pair<int, int>>> GraphicMatroid::GetForests() {
     // returns a vector of forests, each forest represented with an edge list
-    std::vector<std::vector<std::pair<int, int>>> ans(num_forests, std::vector<std::pair<int, int>>(0));
+    std::vector<std::vector<std::pair<int, int>>> ans(num_forests_, std::vector<std::pair<int, int>>(0));
 
     for (int i = 0; i < static_cast<int>(adj_list_.size()); ++i) {
         for (const auto &edge: adj_list_[i]) {
@@ -42,7 +47,7 @@ std::vector<std::vector<std::pair<int, int>>> GraphicMatroid::GetForests() {
     return ans;
 }
 
-void GraphicMatroid::DrawNextForestDFS() {
+void GraphicMatroid::DrawNextForestDFS(int next_forest_index) {
     // takes the edges of the DFS forest via free edges into num_forests'th forest,
     // increases num_forests by 1
 
@@ -50,47 +55,54 @@ void GraphicMatroid::DrawNextForestDFS() {
 
     for (int vertex = 0; vertex < static_cast<int>(adj_list_.size()); ++vertex) {
         if (!visited_vertices[vertex]) {
-            DFSNextForest(vertex, visited_vertices);
+            DFSNextForest(vertex, visited_vertices, next_forest_index);
         }
     }
-
-    ++num_forests;
 }
 
-void GraphicMatroid::DFSNextForest(int vertex, std::vector<bool> &visited_vertices) {
+void GraphicMatroid::DFSNextForest(int vertex, std::vector<bool> &visited_vertices, int next_forest_index) {
     // performs DFS from the vertex via free edges,
     // takes the edges of the DFS tree into num_forests'th forest
 
     visited_vertices[vertex] = true;
     for (const auto &edge: adj_list_[vertex]) {
         if ((edge->forest == -1) && (!visited_vertices[edge->AnotherVertex(vertex)])) {
-            edge->forest = num_forests;
-            DFSNextForest(edge->AnotherVertex(vertex), visited_vertices);
+            edge->forest = next_forest_index;
+            DFSNextForest(edge->AnotherVertex(vertex), visited_vertices, next_forest_index);
         }
     }
 }
 
-void GraphicMatroid::GenerateKForests(int k) {
-    if (k <= 0) {
+void GraphicMatroid::InitializeEverything() {
+    if (initialization_type_ == "random") {
+        InitializeRandomForests();
+    } else {
+        if (initialization_type_ == "DFS") {
+            for (int i = 0; i < num_forests_; ++i) {
+                DrawNextForestDFS(i);
+            }
+        } else {
+            if (initialization_type_ == "BFS") {
+                for (int i = 0; i < num_forests_; ++i) {
+                    DrawNextForestBFS(i);
+                }
+            } else {
+                throw std::runtime_error("unknown initialization type: " + initialization_type_);
+            }
+        }
+
+        InitializeDisjointSets();
+    }
+
+    InitializeForests();
+}
+
+void GraphicMatroid::GenerateKForests() {
+    if (num_forests_ <= 0) {
         return;
     }
 
-    if (initialization_type_ == "DFS") {
-        for (int i = 0; i < k; ++i) {
-            DrawNextForestDFS();
-        }
-    } else {
-        if (initialization_type_ == "BFS") {
-            for (int i = 0; i < k; ++i) {
-                DrawNextForestBFS();
-            }
-        } else {
-            throw std::runtime_error("unknown initialization type: " + initialization_type_);
-        }
-    }
-
-    InitializeDisjointSets();
-    InitializeForests();
+    InitializeEverything();
 
     // PrintGraph();
 
@@ -129,7 +141,7 @@ bool GraphicMatroid::FindPathAndAugment(const std::shared_ptr<Edge> &initial_edg
         auto current_edge = queue.front();
         queue.pop();
 
-        for (int forest_index = 0; forest_index < num_forests; ++forest_index) {
+        for (int forest_index = 0; forest_index < num_forests_; ++forest_index) {
             std::shared_ptr<Edge> next_edge = FindOutEdge(current_edge, forest_index, unvisited_edges);
             unvisited_edges.erase(next_edge);
             while (next_edge != nullptr) {
@@ -164,7 +176,7 @@ int GraphicMatroid::EdgeIsJoining(const std::shared_ptr<Edge> &edge) {
     // if the edge is joining, returns the index of the corresponding forest
     // else returns -1
 
-    for (int forest_index = 0; forest_index < num_forests; ++forest_index) {
+    for (int forest_index = 0; forest_index < num_forests_; ++forest_index) {
         if (edge->forest == forest_index) {
             continue;
         }
@@ -190,7 +202,7 @@ bool GraphicMatroid::TryToAugment() {
     return false;
 }
 
-void GraphicMatroid::DrawNextForestBFS() {
+void GraphicMatroid::DrawNextForestBFS(int next_forest_index) {
     // takes the edges of the BFS forest via free edges into num_forests'th forest,
     // increases num_forests by 1
 
@@ -214,13 +226,11 @@ void GraphicMatroid::DrawNextForestBFS() {
                     }
                     queue.push(next_vertex);
                     visited_vertices[next_vertex] = true;
-                    next_edge->forest = num_forests;
+                    next_edge->forest = next_forest_index;
                 }
             }
         }
     }
-
-    ++num_forests;
 }
 
 std::shared_ptr<Edge> GraphicMatroid::FindOutEdge(const std::shared_ptr<Edge> &edge, int forest_index,
@@ -319,9 +329,11 @@ std::tuple<int, std::vector<std::shared_ptr<Edge>>> GraphicMatroid::Layers() {
                 return std::forward_as_tuple(static_cast<int>(layers.size()), free_edges);
             }
 
-            for (int forest_index = 0; forest_index < num_forests; ++forest_index) {
+            for (int forest_index = 0; forest_index < num_forests_; ++forest_index) {
                 auto next_level_edge = forests[forest_index].MaxLevelEdge(edge->Vertices().first,
                                                                           edge->Vertices().second);
+                ++num_find_edge_levels;
+
                 while (next_level_edge != nullptr) {
                     if (next_level_edge->level < INT32_MAX) {
                         break;
@@ -330,6 +342,7 @@ std::tuple<int, std::vector<std::shared_ptr<Edge>>> GraphicMatroid::Layers() {
                     forests[forest_index].UpdateEdgeLevel(next_level_edge, static_cast<int>(layers.size()));
                     next_level_edge = forests[forest_index].MaxLevelEdge(edge->Vertices().first,
                                                                          edge->Vertices().second);
+                    ++num_find_edge_levels;
                 }
             }
         }
@@ -391,8 +404,9 @@ bool GraphicMatroid::BlockFlowIndependence() {
 
             std::shared_ptr<Edge> next_edge = forests[0].MaxLevelEdge(current_edge->Vertices().first,
                                                                       current_edge->Vertices().second);
+            ++num_find_edge_bfi;
 
-            for (int forest_index = 1; forest_index < num_forests; ++forest_index) {
+            for (int forest_index = 1; forest_index < num_forests_; ++forest_index) {
                 if (next_edge != nullptr) {
                     if (next_edge->level >= next_layer_index) {
                         break;
@@ -400,6 +414,7 @@ bool GraphicMatroid::BlockFlowIndependence() {
                 }
                 next_edge = forests[forest_index].MaxLevelEdge(current_edge->Vertices().first,
                                                                current_edge->Vertices().second);
+                ++num_find_edge_bfi;
             }
 
             if (next_edge == nullptr) {
@@ -438,10 +453,18 @@ void GraphicMatroid::AugmentPath(const std::vector<std::shared_ptr<Edge>> &path,
     path.back()->forest = final_color;
 
     disjoint_components[final_color].Unite(path.back()->Vertices().first, path.back()->Vertices().second);
+
+    ++num_augmentations;
+    if (static_cast<int>(path.size()) > longest_augmentation_length) {
+        longest_augmentation_length = static_cast<int>(path.size());
+    }
+    if (static_cast<int>(path.size()) < shortest_augmentation_length) {
+        shortest_augmentation_length = static_cast<int>(path.size());
+    }
 }
 
 void GraphicMatroid::InitializeDisjointSets() {
-    for (int forest_index = 0; forest_index < num_forests; ++forest_index) {
+    for (int forest_index = 0; forest_index < num_forests_; ++forest_index) {
         DisjointSets next_sets(static_cast<int>(adj_list_.size()));
         disjoint_components.push_back(next_sets);
     }
@@ -479,8 +502,8 @@ int GraphicMatroid::BlockFlowIndependenceCyclic() {
             if (next_layer_index == static_cast<int>(layers.size())) {
                 // we are at a final level
 
-                if (EdgeIsJoiningForForest(current_edge, (next_layer_index - 1) % num_forests)) {
-                    AugmentPath(current_path, (next_layer_index - 1) % num_forests);
+                if (EdgeIsJoiningForForest(current_edge, (next_layer_index - 1) % num_forests_)) {
+                    AugmentPath(current_path, (next_layer_index - 1) % num_forests_);
                     current_path.clear();
                     next_layer_index = 0;
                 } else {
@@ -488,7 +511,7 @@ int GraphicMatroid::BlockFlowIndependenceCyclic() {
                     current_path.pop_back();
                 }
             } else {
-                std::shared_ptr<Edge> next_edge = FindOutEdge(current_edge, (next_layer_index - 1) % num_forests,
+                std::shared_ptr<Edge> next_edge = FindOutEdge(current_edge, (next_layer_index - 1) % num_forests_,
                                                               layers[next_layer_index]);
                 if (next_edge == nullptr) {
                     --next_layer_index;
@@ -547,7 +570,7 @@ std::tuple<bool, std::vector<std::unordered_set<std::shared_ptr<Edge>>>> Graphic
 
         layers.push_back(next_layer);
         ++forest_index;
-        if (forest_index == num_forests) {
+        if (forest_index == num_forests_) {
             forest_index = 0;
         }
     }
@@ -564,7 +587,7 @@ bool GraphicMatroid::EdgeIsJoiningForForest(const std::shared_ptr<Edge> &edge, i
 }
 
 void GraphicMatroid::InitializeForests() {
-    for (int forest_index = 0; forest_index < num_forests; ++forest_index) {
+    for (int forest_index = 0; forest_index < num_forests_; ++forest_index) {
         LinkCutTree next_forest(static_cast<int>(adj_list_.size()));
         forests.push_back(next_forest);
     }
@@ -589,4 +612,34 @@ int GraphicMatroid::NextRandomIndex(std::vector<int>& indices, int& num_already_
     std::swap(indices[answer_index], indices[num_already_drawn]);
     ++num_already_drawn;
     return answer;
+}
+
+void GraphicMatroid::InitializeRandomForests() {
+    // greedily gets k random forests, also generates DisjointSets
+
+    auto edges = EdgeVector();
+    std::shuffle(edges.begin(), edges.end(), generator);
+
+    for (int forest_index = 0; forest_index < num_forests_; ++forest_index) {
+        DisjointSets next_sets(static_cast<int>(adj_list_.size()));
+        disjoint_components.push_back(next_sets);
+    }
+
+    for (const auto& edge : edges) {
+        std::vector<int> forest_indices;
+        forest_indices.reserve(num_forests_);
+        for (int i = 0; i < num_forests_; ++i) {
+            forest_indices.push_back(i);
+        }
+        int num_already_checked = 0;
+        for (int i = 0; i < num_forests_; ++i) {
+            int forest_index = NextRandomIndex(forest_indices, num_already_checked);
+            if (disjoint_components[forest_index].Representative(edge->Vertices().first) !=
+                disjoint_components[forest_index].Representative(edge->Vertices().second)) {
+                edge->forest = forest_index;
+                disjoint_components[forest_index].Unite(edge->Vertices().first, edge->Vertices().second);
+                break;
+            }
+        }
+    }
 }

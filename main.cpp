@@ -59,13 +59,13 @@ std::vector<int> ReadAnswers(const std::string &path) {
     return answers;
 }
 
-std::vector<int> SolveForAllK(const std::vector<std::vector<int>> &adj_list) {
+std::vector<int> SolveForAllK(const std::vector<std::vector<int>> &adj_list, const std::string &initialization_type) {
     // returns (a_0, a_1, ..., a_n), where a_k is the size of the optimal solution for k = k
     std::vector<int> answers;
 
     for (int k = 0; k <= static_cast<int>(adj_list.size()); ++k) {
-        GraphicMatroid graph(adj_list);
-        graph.GenerateKForests(k);
+        GraphicMatroid graph(adj_list, k, initialization_type);
+        graph.GenerateKForests();
         auto forests = graph.GetForests();
         int optimal_size = 0;
         for (const auto &forest: forests) {
@@ -77,11 +77,14 @@ std::vector<int> SolveForAllK(const std::vector<std::vector<int>> &adj_list) {
     return answers;
 }
 
-void ExportVector(const std::string &path, const std::vector<int> &vector) {
+template<typename T>
+void ExportVector(const std::string &path, const std::vector<T> &vector) {
     std::ofstream output(path);
+    std::cout << std::fixed;
+    std::cout << std::setprecision(4);
 
-    for (int element: vector) {
-        output << element << "\n";
+    for (T element: vector) {
+        output << std::setprecision(4) << element << "\n";
     }
 
     output.close();
@@ -103,7 +106,7 @@ void RunRandomTests() {
             auto adj_list = ReadAdjList(prefix + filename_graph);
             auto answers = ReadAnswers(prefix + filename_answers);
 
-            Tester tester(adj_list, answers);
+            Tester tester(adj_list, answers, "DFS");
             auto times = tester.RunForAllK();
 
             for (double time: times) {
@@ -117,8 +120,32 @@ void RunRandomTests() {
 }
 
 int main() {
+    std::string prefix = std::filesystem::current_path().string() + "/../tests/random-1000-15000/";
+    std::string filename_graph = "1000-15000.txt";
+    std::string init_type = "DFS";
 
-    RunRandomTests();
+    auto adj_list = ReadAdjList(prefix + filename_graph);
+    Tester tester(adj_list, std::vector<int>(), init_type);
+
+    std::vector<double> times;
+    std::vector<int> sizes;
+    std::cout << filename_graph << std::endl;
+    std::cout << "k\ttime(s)\toptimal_size\tshortest_aug_length\tlongest_aug_length\t num_augs\t"
+                 << "FindEdges_Levels\tFindEdges_BFI" << std::endl;
+    for (int k = 1; k <= 20; ++k) {
+        tester.RunWithoutChecking(k);
+        std::cout << std::setprecision(4) << k << "\t" << tester.runtime << "\t" << tester.optimal_size << "\t"
+                  << tester.shortest_augmentation_length << "\t" << tester.longest_augmentation_length << "\t"
+                  << tester.num_augmentations << "\t" << tester.num_find_edge_levels << "\t" << tester.num_find_edge_bfi
+                  << "\t" << std::endl;
+        times.push_back(tester.runtime);
+        sizes.push_back(tester.optimal_size);
+    }
+
+    ExportVector(prefix + "times-" + init_type + ".txt", times);
+    ExportVector(prefix + "sizes.txt", sizes);
+
+    // RunRandomTests();
 
     /*std::string prefix = std::filesystem::current_path().string() + "/../tests/random-graphs/";
 

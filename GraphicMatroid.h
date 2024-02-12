@@ -12,30 +12,38 @@
 
 class GraphicMatroid {
 public:
-    explicit GraphicMatroid(const std::vector<std::vector<int>> &adj_list, std::string  initialization_type);
+    // statistics gathering
+    int num_augmentations;
+    int shortest_augmentation_length;
+    int longest_augmentation_length;
+    int num_find_edge_levels;
+    int num_find_edge_bfi;  // number of "find next edge of maximal level" in BlockFlowIndependence;
+
+    explicit GraphicMatroid(const std::vector<std::vector<int>> &adj_list, int num_forests,
+                            std::string initialization_type);
 
     std::vector<std::vector<std::pair<int, int>>> GetForests();
 
-    void GenerateKForests(int k);
+    void GenerateKForests();
 
     void PrintGraph();
 
-    int NextRandomIndex(std::vector<int>& indices, int& num_already_drawn);
+    int NextRandomIndex(std::vector<int> &indices, int &num_already_drawn);
 
 
 private:
     std::vector<std::vector<std::shared_ptr<Edge>>> adj_list_;   // vertices are enumerated from 0
-    std::string initialization_type_;   // BFS or DFS
-    int num_forests;
+    const std::string initialization_type_;   // BFS or DFS
+    const int num_forests_;
     std::vector<DisjointSets> disjoint_components;
     std::vector<LinkCutTree> forests;
     std::mt19937 generator;
 
-    void DrawNextForestDFS();
+    void DrawNextForestDFS(int next_forest_index);
 
-    void DFSNextForest(int vertex, std::vector<bool> &visited_vertices);
+    void DFSNextForest(int vertex, std::vector<bool> &visited_vertices, int next_forest_index);
 
-    void DrawNextForestBFS();
+    void DrawNextForestBFS(int next_forest_index);
 
     std::shared_ptr<Edge> FindOutEdge(const std::shared_ptr<Edge> &edge, int forest_index,
                                       const std::unordered_set<std::shared_ptr<Edge>> &allowed_edges);
@@ -66,6 +74,10 @@ private:
     void InitializeDisjointSets();
 
     void InitializeForests();
+
+    void InitializeEverything();
+
+    void InitializeRandomForests();
 };
 
 
