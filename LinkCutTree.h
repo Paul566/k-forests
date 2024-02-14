@@ -34,6 +34,8 @@ public:
 
     void LinkToRoot(int future_child, int future_parent);
 
+    void Link(int first, int second);
+
     int MaxLevelVertex(int first, int second);
 
     void UpdateLevel(int node, int new_level);
@@ -47,6 +49,7 @@ private:
     // max_level_edges[i] is the vertex of maximal level in the node's subtree in its splay tree
     std::vector<int> level;
     // level[i] is the level of the i-th vertex
+    std::vector<bool> rev;
 
     void Splay(int node);
 
@@ -60,11 +63,11 @@ private:
 
     void MakeRoot(int node);
 
-    void UpdateSplaySubTree(int node);
-
     void Update(int node);
 
-    bool IsAnEdge(int first, int second);
+    void toggle(int t);
+
+    void push(int t);
 };
 
 

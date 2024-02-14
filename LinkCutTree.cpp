@@ -8,6 +8,7 @@ LinkCutTree::LinkCutTree(int size) {
     splay_left = std::vector<int>(size, -1);
     splay_right = std::vector<int>(size, -1);
     level = std::vector<int>(size, INT32_MIN);
+    rev = std::vector<bool>(size, false);
 
     max_level_vertex.reserve(size);
     for (int i = 0; i < size; ++i) {
@@ -84,17 +85,26 @@ void LinkCutTree::SplayRotateRight(int node) {
 }
 
 void LinkCutTree::Splay(int node) {
+    push(node);
+
     while (splay_parent[node] != -1) {
         int parent = splay_parent[node];
         int grandparent = splay_parent[parent];
 
         if (grandparent == -1) {
+            push(parent);
+            push(node);
+
             if (IsLeftChild(node)) {
                 SplayRotateLeft(parent);
             } else {
                 SplayRotateRight(parent);
             }
         } else {
+            push(grandparent);
+            push(parent);
+            push(node);
+
             if (IsLeftChild(parent)) {
                 if (IsLeftChild(node)) {
                     SplayRotateLeft(grandparent);
@@ -113,6 +123,24 @@ void LinkCutTree::Splay(int node) {
                 }
             }
         }
+    }
+}
+
+void LinkCutTree::toggle(int t) {
+    std::swap(splay_left[t], splay_right[t]);
+    // t->sum = s(t->sum); what is this
+    rev[t] = !rev[t];
+}
+
+void LinkCutTree::push(int t) {
+    if(rev[t]) {
+        if(splay_left[t] != -1) {
+            toggle(splay_left[t]);
+        }
+        if(splay_right[t] != -1) {
+            toggle(splay_right[t]);
+        }
+        rev[t] = false;
     }
 }
 
@@ -203,10 +231,15 @@ void LinkCutTree::LinkToRoot(int future_child, int future_parent) {
     splay_parent[future_parent] = future_child;
     Update(future_child);
     Update(future_parent);
+    // TODO maybe one of the updates is not needed
 }
 
 void LinkCutTree::Cut(int node) {
     Access(node);
+
+    if (splay_left[node] == -1) {
+        throw std::runtime_error("in Cut: trying to cut root");
+    }
     splay_parent[splay_left[node]] = -1;
     splay_left[node] = -1;
     Update(node);
@@ -310,4 +343,15 @@ void LinkCutTree::UpdateLevel(int node, int new_level) {
     Access(node);
     level[node] = new_level;
     Update(node);
+}
+
+void LinkCutTree::MakeRoot(int node) {
+    Access(node);
+    toggle(node);
+    push(node);
+}
+
+void LinkCutTree::Link(int first, int second) {
+    MakeRoot(first);
+    LinkToRoot(first, second);
 }
