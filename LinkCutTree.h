@@ -49,7 +49,7 @@ private:
     // max_level_edges[i] is the vertex of maximal level in the node's subtree in its splay tree
     std::vector<int> level;
     // level[i] is the level of the i-th vertex
-    std::vector<bool> rev;
+    std::vector<bool> reversed;
 
     void Splay(int node);
 
@@ -65,9 +65,9 @@ private:
 
     void Update(int node);
 
-    void toggle(int t);
+    void Toggle(int node);
 
-    void push(int t);
+    void Push(int node);
 };
 
 

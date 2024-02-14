@@ -8,7 +8,7 @@ LinkCutTree::LinkCutTree(int size) {
     splay_left = std::vector<int>(size, -1);
     splay_right = std::vector<int>(size, -1);
     level = std::vector<int>(size, INT32_MIN);
-    rev = std::vector<bool>(size, false);
+    reversed = std::vector<bool>(size, false);
 
     max_level_vertex.reserve(size);
     for (int i = 0; i < size; ++i) {
@@ -85,15 +85,15 @@ void LinkCutTree::SplayRotateRight(int node) {
 }
 
 void LinkCutTree::Splay(int node) {
-    push(node);
+    Push(node);
 
     while (splay_parent[node] != -1) {
         int parent = splay_parent[node];
         int grandparent = splay_parent[parent];
 
         if (grandparent == -1) {
-            push(parent);
-            push(node);
+            Push(parent);
+            Push(node);
 
             if (IsLeftChild(node)) {
                 SplayRotateLeft(parent);
@@ -101,9 +101,9 @@ void LinkCutTree::Splay(int node) {
                 SplayRotateRight(parent);
             }
         } else {
-            push(grandparent);
-            push(parent);
-            push(node);
+            Push(grandparent);
+            Push(parent);
+            Push(node);
 
             if (IsLeftChild(parent)) {
                 if (IsLeftChild(node)) {
@@ -126,21 +126,20 @@ void LinkCutTree::Splay(int node) {
     }
 }
 
-void LinkCutTree::toggle(int t) {
-    std::swap(splay_left[t], splay_right[t]);
-    // t->sum = s(t->sum); what is this
-    rev[t] = !rev[t];
+void LinkCutTree::Toggle(int node) {
+    std::swap(splay_left[node], splay_right[node]);
+    reversed[node] = !reversed[node];
 }
 
-void LinkCutTree::push(int t) {
-    if(rev[t]) {
-        if(splay_left[t] != -1) {
-            toggle(splay_left[t]);
+void LinkCutTree::Push(int node) {
+    if(reversed[node]) {
+        if(splay_left[node] != -1) {
+            Toggle(splay_left[node]);
         }
-        if(splay_right[t] != -1) {
-            toggle(splay_right[t]);
+        if(splay_right[node] != -1) {
+            Toggle(splay_right[node]);
         }
-        rev[t] = false;
+        reversed[node] = false;
     }
 }
 
@@ -245,34 +244,6 @@ void LinkCutTree::Cut(int node) {
     Update(node);
 }
 
-/*void LinkCutTree::MakeRoot(int node) {
-    // makes node the root of its represented tree
-    // works in O(depth of node)
-
-    Access(node);
-
-    std::queue<int> queue;
-    queue.push(node);
-    while (!queue.empty()) {
-        int current_node = queue.front();
-        queue.pop();
-
-        int left_child = splay_left[current_node];
-        splay_left[current_node] = splay_right[current_node];
-        splay_right[current_node] = left_child;
-
-        if (splay_right[current_node] != -1) {
-            queue.push(splay_right[current_node]);
-        }
-        if (splay_left[current_node] != -1) {
-            queue.push(splay_left[current_node]);
-        }
-    }
-
-    ReversePath(node);
-    UpdateSplaySubTree(node);
-}*/
-
 void LinkCutTree::Update(int node) {
     // updates the max_level_edge associated to node
 
@@ -347,8 +318,8 @@ void LinkCutTree::UpdateLevel(int node, int new_level) {
 
 void LinkCutTree::MakeRoot(int node) {
     Access(node);
-    toggle(node);
-    push(node);
+    Toggle(node);
+    Push(node);
 }
 
 void LinkCutTree::Link(int first, int second) {
