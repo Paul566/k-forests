@@ -37,7 +37,18 @@ private:
     const int num_forests_;
     std::vector<DisjointSets> disjoint_components;
     std::vector<LinkCutTree> forests;
+    // each LinkCutTree is on 2n+1 elements, first n elements are vertices, next elements correspond to edges
+    std::vector<std::vector<std::shared_ptr<Edge>>> edges_of_forests;
+    // edges_of_forests[i][j] is the edge corresponding to the vertex n + j in the i-th LinkCutTree
     std::mt19937 generator;
+
+    std::shared_ptr<Edge> FindOutEdge(const std::shared_ptr<Edge>& edge, int forest_index);
+
+    void UpdateEdgeLevel(const std::shared_ptr<Edge>& edge, int new_level);
+
+    void MoveEdge(const std::shared_ptr<Edge>& old_edge, const std::shared_ptr<Edge>& new_edge);
+
+    void AddEdge(const std::shared_ptr<Edge>& edge, int forest_index);
 
     void DrawNextForestDFS(int next_forest_index);
 
@@ -45,17 +56,9 @@ private:
 
     void DrawNextForestBFS(int next_forest_index);
 
-    std::shared_ptr<Edge> FindOutEdge(const std::shared_ptr<Edge> &edge, int forest_index,
-                                      const std::unordered_set<std::shared_ptr<Edge>> &allowed_edges);
-
-    bool FindPathAndAugment(const std::shared_ptr<Edge> &initial_edge,
-                            std::unordered_set<std::shared_ptr<Edge>> &unvisited_edges);
-
     int EdgeIsJoining(const std::shared_ptr<Edge> &edge);
 
     bool EdgeIsJoiningForForest(const std::shared_ptr<Edge> &edge, int forest_index);
-
-    bool TryToAugment();
 
     std::unordered_set<std::shared_ptr<Edge>> EdgeSet();
 
@@ -63,11 +66,7 @@ private:
 
     bool Layers(std::vector<std::shared_ptr<Edge>>& uncovered_edges, std::vector<int>& layer_sizes);
 
-    std::tuple<bool, std::vector<std::unordered_set<std::shared_ptr<Edge>>>> LayersCyclic();
-
     bool BlockFlowIndependence();
-
-    int BlockFlowIndependenceCyclic();
 
     void AugmentPath(const std::vector<std::shared_ptr<Edge>> &path, int final_color);
 

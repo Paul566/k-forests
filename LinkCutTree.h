@@ -32,6 +32,8 @@ public:
 
     void Cut(int node);
 
+    void CutEdge(int first_vertex, int second_vertex);
+
     void LinkToRoot(int future_child, int future_parent);
 
     void Link(int first, int second);

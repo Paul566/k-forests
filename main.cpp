@@ -119,20 +119,22 @@ void RunRandomTests() {
     std::cout << "\nAll tests passed!\n";
 }
 
-int main() {
-    std::string prefix = std::filesystem::current_path().string() + "/../tests/random-1000-15000/";
-    std::string filename_graph = "1000-15000.txt";
-    std::string init_type = "DFS";
-
+void
+SaveStatistics(const std::string &prefix, const std::string &filename_graph, const std::string &init_type, int max_k) {
     auto adj_list = ReadAdjList(prefix + filename_graph);
     Tester tester(adj_list, std::vector<int>(), init_type);
 
     std::vector<double> times;
     std::vector<int> sizes;
-    std::cout << filename_graph << std::endl;
-    std::cout << "k\ttime(s)\toptimal_size\tshortest_aug_length\tlongest_aug_length\t num_augs\t"
-                 << "FindEdges_Levels\tFindEdges_BFI" << std::endl;
-    for (int k = 1; k <= 20; ++k) {
+    std::vector<int> shortest_aug_lengths;
+    std::vector<int> longest_aug_lengths;
+    std::vector<int> num_augmentations;
+    std::vector<int> num_find_edge_levels;
+    std::vector<int> num_find_edge_bfi;
+    std::cout << "graph: " << filename_graph << "\ninit_type: " << init_type << std::endl;
+    std::cout << "k\ttime(s)\toptimal_size\tshortest_aug_length\tlongest_aug_length\tnum_augs\t"
+              << "FindEdges_Levels\tFindEdges_BFI" << std::endl;
+    for (int k = 1; k <= max_k; ++k) {
         tester.RunWithoutChecking(k);
         std::cout << std::setprecision(4) << k << "\t" << tester.runtime << "\t" << tester.optimal_size << "\t"
                   << tester.shortest_augmentation_length << "\t" << tester.longest_augmentation_length << "\t"
@@ -140,12 +142,34 @@ int main() {
                   << "\t" << std::endl;
         times.push_back(tester.runtime);
         sizes.push_back(tester.optimal_size);
+        shortest_aug_lengths.push_back(tester.shortest_augmentation_length);
+        longest_aug_lengths.push_back(tester.longest_augmentation_length);
+        num_augmentations.push_back(tester.num_augmentations);
+        num_find_edge_levels.push_back(tester.num_find_edge_levels);
+        num_find_edge_bfi.push_back(tester.num_find_edge_bfi);
     }
+    std::cout << "-------------------------------------------------------------------------------" << std::endl;
 
     ExportVector(prefix + "times-" + init_type + ".txt", times);
     ExportVector(prefix + "sizes.txt", sizes);
+    ExportVector(prefix + "shortest-aug-length-" + init_type + ".txt", shortest_aug_lengths);
+    ExportVector(prefix + "longest-aug-length-" + init_type + ".txt", longest_aug_lengths);
+    ExportVector(prefix + "num-augmentations-" + init_type + ".txt", num_augmentations);
+    ExportVector(prefix + "num-find-edge-levels-" + init_type + ".txt", num_find_edge_levels);
+    ExportVector(prefix + "num-find-edge-bfi-" + init_type + ".txt", num_find_edge_bfi);
+}
 
-    // RunRandomTests();
+int main() {
+
+    /*std::string prefix = std::filesystem::current_path().string() + "/../tests/astrophysics/";
+    std::string filename_graph = "astrophysics.txt";
+    int max_k = 30;
+    SaveStatistics(prefix, filename_graph, "DFS", max_k);
+    SaveStatistics(prefix, filename_graph, "BFS", max_k);
+    SaveStatistics(prefix, filename_graph, "random", max_k);*/
+
+
+    RunRandomTests();
 
     /*std::string prefix = std::filesystem::current_path().string() + "/../tests/random-graphs/";
 
@@ -155,9 +179,32 @@ int main() {
     auto adj_list = ReadAdjList(prefix + filename_graph);
     auto answers = ReadAnswers(prefix + filename_answers);
 
-    GraphicMatroid graph(adj_list);
-    graph.GenerateKForests(3);
+    GraphicMatroid graph(adj_list, 2, "DFS");
+    graph.GenerateKForests();
     graph.PrintGraph();*/
+
+    /*LinkCutTree lct(7);
+    lct.Link(0, 1);
+    lct.Link(5, 6);
+    lct.Link(0, 6);
+    lct.Link(0, 4);
+    lct.Link(2, 3);
+    lct.Link(1, 2);
+    lct.Cut(0);
+
+    for (int i = 0; i <= 6; ++i) {
+        lct.UpdateLevel(i, i);
+    }
+
+    std::cout << lct.Parent(0) << std::endl << std::endl;
+
+    for (int i = 0; i <= 6; ++i) {
+        for (int j = i; j <= 6; ++j) {
+            std::cout << "(" << i << ", " << j << "): " << lct.MaxLevelVertex(i, j) << std::endl;
+        }
+    }*/
+
+
 
     return 0;
 }

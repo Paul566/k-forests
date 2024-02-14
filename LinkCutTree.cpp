@@ -326,3 +326,15 @@ void LinkCutTree::Link(int first, int second) {
     MakeRoot(first);
     LinkToRoot(first, second);
 }
+
+void LinkCutTree::CutEdge(int first_vertex, int second_vertex) {
+    if (first_vertex == Parent(second_vertex)) {
+        Cut(second_vertex);
+        return;
+    }
+    if (second_vertex == Parent(first_vertex)) {
+        Cut(first_vertex);
+        return;
+    }
+    throw std::runtime_error("in CutEdge: no such edge");
+}

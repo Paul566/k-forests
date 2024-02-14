@@ -9,10 +9,12 @@ public:
     // forest are enumerated from 0
     // TODO maybe use std::optional<int> instead of the magical constant "-1"
     int level;
+    int index_in_forest;
 
     Edge(int from, int to) : from_(from), to_(to) {
         forest = -1;
         level = INT32_MAX;
+        index_in_forest = -1;
     }
 
     int AnotherVertex(int vertex) const {
