@@ -7,8 +7,12 @@ LinkCutTree::LinkCutTree(int size) {
     path_parent = std::vector<int>(size, -1);
     splay_left = std::vector<int>(size, -1);
     splay_right = std::vector<int>(size, -1);
-    edges = std::vector<std::shared_ptr<Edge>>(size, nullptr);
-    max_level_edges = std::vector<std::shared_ptr<Edge>>(size, nullptr);
+    level = std::vector<int>(size, INT32_MIN);
+
+    max_level_vertex.reserve(size);
+    for (int i = 0; i < size; ++i) {
+        max_level_vertex.push_back(i);
+    }
 }
 
 void LinkCutTree::SplayRotateLeft(int node) {
@@ -164,7 +168,24 @@ int LinkCutTree::Root(int node) {
     return node;
 }
 
-void LinkCutTree::LinkToRoot(int future_child, int future_parent, const std::shared_ptr<Edge>& edge) {
+int LinkCutTree::Parent(int node) {
+    Splay(node);
+
+    if (splay_left[node] == -1) {
+        // node is on top of its preferred path
+        return path_parent[node];
+    }
+
+    node = splay_left[node];
+    while(splay_right[node] != -1) {
+        node = splay_right[node];
+    }
+    Splay(node);
+
+    return node;
+}
+
+void LinkCutTree::LinkToRoot(int future_child, int future_parent) {
     // future_child has to be the root of its represented tree
 
     if (Root(future_child) != future_child) {
@@ -180,34 +201,18 @@ void LinkCutTree::LinkToRoot(int future_child, int future_parent, const std::sha
 
     splay_left[future_child] = future_parent;
     splay_parent[future_parent] = future_child;
-    edges[future_child] = edge;
     Update(future_child);
     Update(future_parent);
 }
 
 void LinkCutTree::Cut(int node) {
     Access(node);
-    edges[node] = nullptr;
     splay_parent[splay_left[node]] = -1;
     splay_left[node] = -1;
     Update(node);
 }
 
-void LinkCutTree::Link(const std::shared_ptr<Edge>& edge) {
-    // links nodes first and second, second becomes parent
-
-    int first = edge->Vertices().first;
-    int second = edge->Vertices().second;
-
-    if (Root(first) == Root(second)) {
-        throw std::runtime_error("in Link: trying to link two nodes in the same tree");
-    }
-
-    MakeRoot(first);
-    LinkToRoot(first, second, edge);
-}
-
-void LinkCutTree::MakeRoot(int node) {
+/*void LinkCutTree::MakeRoot(int node) {
     // makes node the root of its represented tree
     // works in O(depth of node)
 
@@ -233,65 +238,33 @@ void LinkCutTree::MakeRoot(int node) {
 
     ReversePath(node);
     UpdateSplaySubTree(node);
-}
-
-void LinkCutTree::ReversePath(int node) {
-    // reverses edges on the path to root
-    if (edges[node] != nullptr) {
-        // node is not root
-        ReversePath(edges[node]->AnotherVertex(node));
-        edges[edges[node]->AnotherVertex(node)] = edges[node];
-        edges[node] = nullptr;
-    }
-}
-
-void LinkCutTree::UpdateSplaySubTree(int node) {
-    if (splay_left[node] != -1) {
-        UpdateSplaySubTree(splay_left[node]);
-    }
-    if (splay_right[node] != -1) {
-        UpdateSplaySubTree(splay_right[node]);
-    }
-    Update(node);
-}
+}*/
 
 void LinkCutTree::Update(int node) {
     // updates the max_level_edge associated to node
 
-    max_level_edges[node] = edges[node];
+    max_level_vertex[node] = node;
 
     if (splay_left[node] != -1) {
-        if (max_level_edges[splay_left[node]] != nullptr) {
-            if (max_level_edges[node] != nullptr) {
-                if (max_level_edges[splay_left[node]]->level > max_level_edges[node]->level) {
-                    max_level_edges[node] = max_level_edges[splay_left[node]];
-                }
-            } else {
-                max_level_edges[node] = max_level_edges[splay_left[node]];
-            }
+        if (level[max_level_vertex[splay_left[node]]] > level[max_level_vertex[node]]) {
+            max_level_vertex[node] = max_level_vertex[splay_left[node]];
         }
     }
     if (splay_right[node] != -1) {
-        if (max_level_edges[splay_right[node]] != nullptr) {
-            if (max_level_edges[node] != nullptr) {
-                if (max_level_edges[splay_right[node]]->level > max_level_edges[node]->level) {
-                    max_level_edges[node] = max_level_edges[splay_right[node]];
-                }
-            } else {
-                max_level_edges[node] = max_level_edges[splay_right[node]];
-            }
+        if (level[max_level_vertex[splay_right[node]]] > level[max_level_vertex[node]]) {
+            max_level_vertex[node] = max_level_vertex[splay_right[node]];
         }
     }
 }
 
-std::shared_ptr<Edge> LinkCutTree::MaxLevelEdge(int first, int second) {
-    // returns edge of maximal level on the path between the input vertices
+int LinkCutTree::MaxLevelVertex(int first, int second) {
+    // returns vertex of maximal level on the path between the input vertices
 
     if (Root(first) != Root(second)) {
-        return nullptr;
+        return -1;
     }
-    if (IsAnEdge(first, second)) {
-        return nullptr;
+    if (first == second) {
+        return first;
     }
 
     Access(first);
@@ -299,67 +272,42 @@ std::shared_ptr<Edge> LinkCutTree::MaxLevelEdge(int first, int second) {
 
     if (least_common_ancestor == second) {
         Splay(first);
-        return max_level_edges[first];
+        if (level[max_level_vertex[first]] > level[least_common_ancestor]) {
+            return max_level_vertex[first];
+        }
+        return least_common_ancestor;
     }
     if (least_common_ancestor == first) {
         Access(first);
         Splay(second);
-        return max_level_edges[second];
+        if (level[max_level_vertex[second]] > level[least_common_ancestor]) {
+            return max_level_vertex[second];
+        }
+        return least_common_ancestor;
     }
 
     Splay(first);
-    std::shared_ptr<Edge> first_candidate = max_level_edges[first];
+    int first_candidate = max_level_vertex[first];
 
     Access(first);
     Splay(second);
-    std::shared_ptr<Edge> second_candidate = max_level_edges[second];
+    int second_candidate = max_level_vertex[second];
 
-    if (first_candidate == nullptr){
+    if (first_candidate == -1){
         return second_candidate;
     }
-    if (second_candidate == nullptr) {
+    if (second_candidate == -1) {
         return first_candidate;
     }
 
-    if (first_candidate->level > second_candidate->level) {
+    if (level[first_candidate] > level[second_candidate]) {
         return first_candidate;
     }
     return second_candidate;
 }
 
-void LinkCutTree::CutEdge(const std::shared_ptr<Edge>& edge) {
-    if (!IsAnEdge(edge->Vertices().first, edge->Vertices().second)) {
-        throw std::runtime_error("in CutEdge: no such edge in the forest");
-    }
-
-    if (edge == edges[edge->Vertices().first]) {
-        Cut(edge->Vertices().first);
-    } else {
-        Cut(edge->Vertices().second);
-    }
-}
-
-void LinkCutTree::UpdateEdgeLevel(const std::shared_ptr<Edge>& edge, int new_level) {
-    int lower_vertex = edge->Vertices().first;
-    if (edge == edges[edge->Vertices().second]) {
-        lower_vertex = edge->Vertices().second;
-    }
-
-    CutEdge(edge);
-    edge->level = new_level;
-    LinkToRoot(lower_vertex, edge->AnotherVertex(lower_vertex), edge);
-}
-
-bool LinkCutTree::IsAnEdge(int first, int second) {
-    if (edges[first] != nullptr) {
-        if (edges[first]->AnotherVertex(first) == second) {
-            return true;
-        }
-    }
-    if (edges[second] != nullptr) {
-        if (edges[second]->AnotherVertex(second) == first) {
-            return true;
-        }
-    }
-    return false;
+void LinkCutTree::UpdateLevel(int node, int new_level) {
+    Access(node);
+    level[node] = new_level;
+    Update(node);
 }

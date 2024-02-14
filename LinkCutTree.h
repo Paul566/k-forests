@@ -4,7 +4,22 @@
 
 #include <vector>
 #include <memory>
-#include "Edge.h"
+#include <unordered_map>
+
+struct PairHash {
+    // TODO is this needed?
+    template<class T1, class T2>
+    size_t operator()(const std::pair<T1, T2> &pair) const {
+        auto hash_first = std::hash<T1>{}(pair.first);
+        auto hash_second = std::hash<T2>{}(pair.second);
+
+        if (hash_first != hash_second) {
+            return hash_first ^ hash_second;
+        }
+
+        return hash_first;
+    }
+};
 
 
 class LinkCutTree {
@@ -13,28 +28,25 @@ public:
 
     int Root(int node);
 
+    int Parent(int node);
+
     void Cut(int node);
 
-    void CutEdge(const std::shared_ptr<Edge>& edge);
+    void LinkToRoot(int future_child, int future_parent);
 
-    void Link(const std::shared_ptr<Edge>& edge);
+    int MaxLevelVertex(int first, int second);
 
-    void LinkToRoot(int future_child, int future_parent, const std::shared_ptr<Edge>& edge);
-
-    std::shared_ptr<Edge> MaxLevelEdge(int first, int second);
-
-    void UpdateEdgeLevel(const std::shared_ptr<Edge>& edge, int new_level);
+    void UpdateLevel(int node, int new_level);
 
 private:
     std::vector<int> splay_parent;
     std::vector<int> path_parent;
     std::vector<int> splay_left;
     std::vector<int> splay_right;
-    std::vector<std::shared_ptr<Edge>> edges;
-    // edges[i] is the edge that goes up from i-th vertex in the represented tree
-    std::vector<std::shared_ptr<Edge>> max_level_edges;
-    // max_level_edges[i] is the edge of maximal level associated to some vertex
-    // in the node's subtree in its splay tree
+    std::vector<int> max_level_vertex;
+    // max_level_edges[i] is the vertex of maximal level in the node's subtree in its splay tree
+    std::vector<int> level;
+    // level[i] is the level of the i-th vertex
 
     void Splay(int node);
 
@@ -47,8 +59,6 @@ private:
     int Access(int node);
 
     void MakeRoot(int node);
-
-    void ReversePath(int node);
 
     void UpdateSplaySubTree(int node);
 
