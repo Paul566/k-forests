@@ -6,7 +6,8 @@
 SegmentTree::SegmentTree(std::vector<int> &left_ends, std::vector<int> &right_ends) :
         segment_left_end(left_ends), segment_right_end(right_ends) {
     if (left_ends.empty()) {
-        throw std::runtime_error("in SegmentTree: zero segments");
+        Build(0, 1);
+        return;
     }
 
     min_left = INT32_MAX;
@@ -85,12 +86,17 @@ std::vector<int> SegmentTree::Retrieve(int first, int second) {
     }
 
     int vertex = 0;
-    while((vertex_right_end[left_child[vertex]] > second) || (vertex_left_end[right_child[vertex]] <= first)) {
-        if (vertex_right_end[left_child[vertex]] > second) {
+    while (((vertex_right_end[left_child[vertex]] > second) && (left_child[vertex] != -1)) ||
+           ((vertex_left_end[right_child[vertex]] <= first) && (right_child[vertex] != -1))) {
+        if ((vertex_right_end[left_child[vertex]] > second) && (left_child[vertex] != -1)) {
             vertex = left_child[vertex];
             continue;
         }
-        vertex = right_child[vertex];
+        if ((vertex_left_end[right_child[vertex]] <= first) && (right_child[vertex] != -1)) {
+            vertex = right_child[vertex];
+            continue;
+        }
+        break;
     }
     // now vertex is the lowest vertex that contains both break lines
 
@@ -100,13 +106,13 @@ std::vector<int> SegmentTree::Retrieve(int first, int second) {
     SegmentsContainingPoint(second, vertex, contain_second);
 
     std::vector<int> answer;
-    for (int index : contain_first) {
+    for (int index: contain_first) {
         if (contain_second.find(index) == contain_second.end()) {
             answer.push_back(index);
             Delete(index, vertex);
         }
     }
-    for (int index : contain_second) {
+    for (int index: contain_second) {
         if (contain_first.find(index) == contain_first.end()) {
             answer.push_back(index);
             Delete(index, vertex);
