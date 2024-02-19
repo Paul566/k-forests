@@ -1,13 +1,21 @@
 #include <cstdint>
 #include <stdexcept>
 #include <iostream>
+#include <utility>
 #include "SegmentTree.h"
 
-SegmentTree::SegmentTree(std::vector<int> &left_ends, std::vector<int> &right_ends) :
-        segment_left_end(left_ends), segment_right_end(right_ends) {
+SegmentTree::SegmentTree(std::vector<int> &left_ends, std::vector<int> &right_ends,
+                         std::vector<std::shared_ptr<Edge>> edges) :
+        segment_left_end(left_ends), segment_right_end(right_ends), edges_(std::move(edges)) {
     if (left_ends.empty()) {
         Build(0, 1);
         return;
+    }
+
+    for (int i = 0; i < static_cast<int>(left_ends.size()); ++i) {
+        if (segment_left_end[i] > segment_right_end[i]) {
+            std::swap(segment_left_end[i], segment_right_end[i]);
+        }
     }
 
     min_left = INT32_MAX;
@@ -78,22 +86,27 @@ void SegmentTree::Delete(int segment_index, int vertex) {
     }
 }
 
-std::vector<int> SegmentTree::Retrieve(int first, int second) {
-    // returns indices of the segments that have exactly one endpoint in {first + 1, ..., second}
+std::vector<std::shared_ptr<Edge>> SegmentTree::Retrieve(int first, int second) {
+    // returns edges corresponding to segments that have left endpoint <= first, right endpoint >= second
     // then deletes those segments
     if (second < first) {
         std::swap(first, second);
     }
 
+    std::vector<std::shared_ptr<Edge>> answer;
+    std::unordered_set<int> indices;
     int vertex = 0;
-    while (((vertex_right_end[left_child[vertex]] > second) && (left_child[vertex] != -1)) ||
+    indices.insert(segment_indices[vertex].begin(), segment_indices[vertex].end());
+    while (((vertex_right_end[left_child[vertex]] >= second) && (left_child[vertex] != -1)) ||
            ((vertex_left_end[right_child[vertex]] <= first) && (right_child[vertex] != -1))) {
-        if ((vertex_right_end[left_child[vertex]] > second) && (left_child[vertex] != -1)) {
+        if ((vertex_right_end[left_child[vertex]] >= second) && (left_child[vertex] != -1)) {
             vertex = left_child[vertex];
+            indices.insert(segment_indices[vertex].begin(), segment_indices[vertex].end());
             continue;
         }
         if ((vertex_left_end[right_child[vertex]] <= first) && (right_child[vertex] != -1)) {
             vertex = right_child[vertex];
+            indices.insert(segment_indices[vertex].begin(), segment_indices[vertex].end());
             continue;
         }
         break;
@@ -103,20 +116,17 @@ std::vector<int> SegmentTree::Retrieve(int first, int second) {
     std::unordered_set<int> contain_first;
     SegmentsContainingPoint(first, vertex, contain_first);
     std::unordered_set<int> contain_second;
-    SegmentsContainingPoint(second, vertex, contain_second);
+    SegmentsContainingPoint(second - 1, vertex, contain_second);
 
-    std::vector<int> answer;
     for (int index: contain_first) {
-        if (contain_second.find(index) == contain_second.end()) {
-            answer.push_back(index);
-            Delete(index, vertex);
+        if (contain_second.find(index) != contain_second.end()) {
+            indices.insert(index);
         }
     }
-    for (int index: contain_second) {
-        if (contain_first.find(index) == contain_first.end()) {
-            answer.push_back(index);
-            Delete(index, vertex);
-        }
+
+    for (int index : indices) {
+        answer.push_back(edges_[index]);
+        Delete(index, 0);
     }
 
     return answer;

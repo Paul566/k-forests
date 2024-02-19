@@ -4,19 +4,22 @@
 
 #include <vector>
 #include <unordered_set>
+#include <memory>
+#include "Edge.h"
 
 class SegmentTree {
 public:
-    SegmentTree(std::vector<int>& left_ends, std::vector<int>& right_ends);
+    SegmentTree(std::vector<int>& left_ends, std::vector<int>& right_ends, std::vector<std::shared_ptr<Edge>> edges);
 
-    std::vector<int> Retrieve(int first, int second);
+    std::vector<std::shared_ptr<Edge>> Retrieve(int first, int second);
 
 private:
     int min_left;
     int max_right;
 
-    const std::vector<int> segment_left_end;
-    const std::vector<int> segment_right_end;
+    std::vector<int> segment_left_end;
+    std::vector<int> segment_right_end;
+    const std::vector<std::shared_ptr<Edge>> edges_;
 
     std::vector<int> left_child;
     std::vector<int> right_child;
